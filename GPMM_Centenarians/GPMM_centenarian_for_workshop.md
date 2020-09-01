@@ -16,45 +16,6 @@ library(gridExtra)
 setwd("E:/github/Code_for_publications/GPMM_Centenarians")
 source('./subroutines.R')
 ```
-
-    Loading required package: lattice
-    Loading required package: plyr
-    Loading required package: survival
-    Loading required package: Formula
-    
-    Attaching package: 'Hmisc'
-    
-    The following objects are masked from 'package:plyr':
-    
-        is.discrete, summarize
-    
-    The following objects are masked from 'package:base':
-    
-        format.pval, units
-    
-    Loading required package: ggrepel
-    
-    Attaching package: 'pracma'
-    
-    The following object is masked from 'package:Hmisc':
-    
-        ceil
-    
-    Loading required package: carData
-    
-    Attaching package: 'car'
-    
-    The following object is masked from 'package:pracma':
-    
-        logit
-    
-    
-    Attaching package: 'genefilter'
-    
-    The following object is masked from 'package:car':
-    
-        Anova
-    
     
 
 ## 2 Design GPMM
