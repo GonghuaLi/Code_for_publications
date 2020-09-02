@@ -1,0 +1,30 @@
+MetID	MetName	Formulas	HMDBID	CHEMBLID	Charge	Exchange_rxn	is_essentail_for_biomass	Blood_concentration(max)	uptake_rate	lb(umol/min/100ml tissue)	ub		pubmed	
+Energy related nutrition														
+						EX_arg_L(e)				-0.05	1000			-0.039583332
+						EX_glc(e)				-0.452999982	1000		3336288	-0.452999982
+						EX_gln_L(e)				-0.127499995	1000			-0.127499995
+						EX_his_L(e)				-0.05	1000			-0.016666666
+						EX_ile_L(e)				-0.05	1000			-0.016666666
+						EX_leu_L(e)				-0.05	1000			-0.060369331
+						EX_lys_L(e)				-0.05	1000			-0.016666666
+						EX_met_L(e)				-0.05	1000			-0.016666666
+						EX_phe_L(e)				-0.05	1000			-0.016666666
+						EX_thr_L(e)				-0.05	1000			-0.016666666
+						EX_trp_L(e)				-0.05	1000			-0.016666666
+						EX_val_L(e)				-0.05	1000			-0.016666666
+						EX_ocdca(e)				-0.048	1000		1252614	-0.048
+						EX_ocdcea(e)				-0.048	1000		1252614	-0.048
+						EX_hdca(e)				-0.048	1000		1252614	-0.048
+						EX_lac_D(e)				0	0		12879188	0
+						EX_pyr(e)				0	0			0
+														
+														
+														
+Irion and oxygen														
+pi[e]	phosphate	HO4P	HMDB00973	43474	-2	EX_pi(e)	0			-1000	1000			
+na1[e]	Sodium	Na	HMDB00588	29101	1	EX_na1(e)	0			-1000	1000			
+fe2[e]	Fe2+	Fe	HMDB00692	29033	2	EX_fe2(e)	0			-1000	1000			
+k[e]	potassium	K	HMDB00586	29103	1	EX_k(e)	0			-1000	1000			
+h2o[e]	H2O	H2o	HMDB02111	3303	0	EX_h2o(e)	0			-1000	1000			
+						EX_Tyr_ggn(e)				-1000	1000			
+						EX_o2(e)				-1000	1000			
