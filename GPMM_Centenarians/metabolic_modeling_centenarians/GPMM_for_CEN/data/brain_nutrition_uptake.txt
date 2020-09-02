@@ -1,0 +1,36 @@
+MetID	MetName	Formulas	HMDBID	CHEMBLID	Charge	Exchange_rxn	is_essentail_for_biomass	Blood_concentration(max)	uptake_rate	lb(mmol/min/L tissue)	ub	reference
+Energy related nutrition												
+glc_D[e]	D-glucose	C6H12O6	HMDB00122	4167	0	EX_glc(e)	0	6		-0.35	-0.28	PMID: 16037089
+gln_L[e]	L-glutamine	C5H10N2O3	HMDB00641	18050	0	EX_gln_L(e)	0	1.655		-0.01	0	PMCID: PMC4269725
+gly[e]	Glycine	C2H5NO2	HMDB00123	15428	0	EX_gly(e)	0	1.285		-0.0005	1000	
+ala_L[e]	L-alanine	C3H7NO2	HMDB00161	16977	0	EX_ala_L(e)	0	0.6804		-0.0005	1000	
+lys_L[e]	L-lysinium(1+)	C6H15N2O2	HMDB00182	18019	1	EX_lys_L(e)	1	0.503		-0.003	1000	Bookshelf ID: NBK28180
+pro_L[e]	L-proline	C5H9NO2	HMDB00162	17203	0	EX_pro_L(e)	1	0.455		-0.0079	1000	
+val_L[e]	L-valine	C5H11NO2	HMDB00883	16414	0	EX_val_L(e)	1	0.4493		-0.0022	1000	PMID: 3668544
+tyr_L[e]	L-tyrosine	C9H11NO3	HMDB00158	17895	0	EX_tyr_L(e)	1	0.42		-0.0077	1000	PMID: 3668544
+thr_L[e]	L-threonine	C4H9NO3	HMDB00167	16857	0	EX_thr_L(e)	1	0.395		-0.0018	1000	PMID: 3668544
+cys_L[e]	L-cysteine	C3H7NO2S	HMDB00574	17561	0	EX_cys_L(e)	0	0.365		-0.0005	1000	
+ser_L[e]	L-serine	C3H7NO3	HMDB00187	17115	0	EX_ser_L(e)	1	0.3271		-0.0005	1000	
+leu_L[e]	L-leucine	C6H13NO2	HMDB00687	15603	0	EX_leu_L(e)	1	0.266		-0.0141	1000	PMID: 3668544
+arg_L[e]	L-argininium(1+)	C6H15N4O2	HMDB00517	16467	1	EX_arg_L(e)	0	0.26		-0.003	1000	Bookshelf ID: NBK28180
+his_L[e]	L-histidine	C6H9N3O2	HMDB00177	15971	0	EX_his_L(e)	1	0.2431		-0.0052	1000	PMID: 3668544
+trp_L[e]	L-tryptophan	C11H12N2O2	HMDB00929	16828	0	EX_trp_L(e)	1	0.1831		-0.0028	1000	PMID: 3668544
+phe_L[e]	L-phenylalanine	C9H11NO2	HMDB00159	17295	0	EX_phe_L(e)	1	0.175		-0.0106	1000	PMID: 3668544
+glu_L[e]	L-glutamate(1-)	C5H8NO4	HMDB00148	16015	-1	EX_glu_L(e)	0	0.17		-0.0005	1000	
+ile_L[e]	L-isoleucine	C6H13NO2	HMDB00172	17191	0	EX_ile_L(e)	1	0.138		-0.0028	1000	PMID: 3668544
+asn_L[e]	L-asparagine	C4H8N2O3	HMDB00168	17196	0	EX_asn_L(e)	0	0.1043		-0.0005	1000	
+met_L[e]	L-methionine	C5H11NO2S	HMDB00696	16643	0	EX_met_L(e)	1	0.0604		-0.0017	1000	PMID: 3668544
+asp_L[e]	L-aspartate(1-)	C4H6NO4	HMDB00191	17053	-1	EX_asp_L(e)	0	0.0392		-0.0005	1000	
+2hb[e]						EX_2hb(e)				-0.032	0	PMID: 12142574
+acac[e]						EX_acac(e)				-0.0035	0	PMID: 25147107;PMID: 24388785
+lac_L[e]	(S)-lactate	C3H5O3	HMDB00190	422	-1	EX_lac_L(e)	0			-0.06	0	Bookshelf ID: NBK28180
+												
+												
+Irion and oxygen												
+pi[e]	phosphate	HO4P	HMDB00973	43474	-2	EX_pi(e)	0			-1000	1000	
+o2[e]	O2	O2	HMDB01377	15379	0	EX_o2(e)	0			-1000	1000	
+na1[e]	Sodium	Na	HMDB00588	29101	1	EX_na1(e)	0			-1000	1000	
+fe2[e]	Fe2+	Fe	HMDB00692	29033	2	EX_fe2(e)	0			-1000	1000	
+k[e]	potassium	K	HMDB00586	29103	1	EX_k(e)	0			-1000	1000	
+h2o[e]	H2O	H2o	HMDB02111	3303	0	EX_h2o(e)	0			-1000	1000	
+						EX_Tyr_ggn(e)				-1000	1000	
