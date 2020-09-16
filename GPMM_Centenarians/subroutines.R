@@ -84,6 +84,11 @@ fillgaps_rowMin <- function(X){
   return(out)
 }
 
+is.outliner <- function(x,coef = 3){
+   out =  x %in% boxplot.stats(x,coef = coef)$out
+    return(out)
+}
+
 
 #2. plot #####################
 lghplot.boxplot <- function(p,width = 0.3){

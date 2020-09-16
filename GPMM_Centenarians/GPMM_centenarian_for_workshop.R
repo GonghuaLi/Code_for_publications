@@ -167,58 +167,82 @@ benchflux.FastCore = benchflux[,vid]
 vrxns = intersect(rownames(benchflux.GPMM),rownames(GPMM))
 prediction = GPMM[vrxns,]
 experiment = benchflux.GPMM[vrxns,]
+
+aa = apply(experiment,1,median) > 1e-3
+prediction = prediction[aa,]
+experiment = experiment[aa,]
+
+
+for(i in 1:nrow(experiment)){
+    dx =is.outliner(experiment[i,],coef = 1.5)
+    experiment[i,dx] = NA
+}
 p.GPMM = melt(prediction)$value
 e.GPMM = melt(experiment)$value
 
 # Figure 1B
-ids = e.GPMM > 1e-3   & abs(p.GPMM) > 1e-6
+ids = e.GPMM > 0   & abs(p.GPMM) > 0
+ids[is.na(ids)] = FALSE
 Nrxns = sum(ids)
 Nrxns
 GPMMcor = cor.test(log10(abs(p.GPMM[ids])),log10(abs(e.GPMM[ids])),method = 'pearson')
+GPMMcor
 text = paste0('R-Squred = ',signif(GPMMcor$estimate^2,2),'\n','p = ',signif(GPMMcor$p.value,2))
 #text = paste0(expression(R^2),' = ',signif(GPMMcor$estimate^2,2),'\n','p = ',signif(GPMMcor$p.value,2))
 #text = expression(paste0('R'^2,' = ',signif(GPMMcor$estimate^2,2),'\n','p = ',signif(GPMMcor$p.value,2))
 text
 #expression(italic(R)^2,'= 0.65\n',italic(P),'= 1.9e-100'),
-pdf("./figures/for_pub/Figure 1B.pdf")
-ggplot(,aes(log10(p.GPMM[ids]),log10(e.GPMM[ids]))) + geom_point(color = "black")+ 
-      annotate(geom="text", x=-3, y=1, parse = TRUE,
+pdf("./figures/for_pub/Figure S5A.pdf")
+ggplot(,aes(log10(p.GPMM[ids]),log10(e.GPMM[ids]))) + geom_point(color = "black")+ #geom_smooth(method = 'lm')+
+      annotate(geom="text", x=-3, y=0.5, parse = TRUE,
                #label = "italic(R) '= 25.60'  italic(p)<0.001",
                 #label  = "italic(R)^2' = 0.65'~ ~ italic(p)<0.001",
-               label = expression(atop(paste(italic(R)^2,' = 0.65'),
-                                      paste(italic(P), '= 1.9e-100'))),
+               label = expression(atop(paste(italic(R)^2,' = 0.72'),
+                                      paste(italic(P), '= 2.3e-106'))),
                #label = text,
                #label=expression(paste(italic(R)^2,'= 0.65 ')),
                color="darkblue",size = 12)+
-      geom_abline(intercept=0,slope=1,size = 1.2,color = "darkblue")+#theme_bw()+
+      geom_abline(intercept=0,slope=1,size = 1.5,color = "darkblue")+#theme_bw()+
       annotate(geom="text", x= 0.85, y=1.35, label="1:1",color="darkblue",size = 14)+ #geom_smooth()+#ylim(-3,1.4)+
-      lghplot.addtheme(size = 24)+  labs(title = "GPMM")+
+      lghplot.addtheme(size = 24)+  labs(title = "GPMM")+xlim(-5,1.35)+ ylim(-5,1.35)+
       xlab("Predicted flux (log10 mmol/min/L)")+ylab("Experimental flux (log10 mmol/min/L)")
       #geom_smooth(se = FALSE, method = "gam", formula = y~x ) 
 dev.off()
 
+
 vrxns = intersect(rownames(benchflux.GIMME),rownames(GIMME))
 prediction = GIMME[vrxns,]
 experiment = benchflux.GIMME[vrxns,]
+aa = apply(experiment,1,median) > 1e-3
+prediction = prediction[aa,]
+experiment = experiment[aa,]
+
+for(i in 1:nrow(experiment)){
+    dx =is.outliner(experiment[i,],coef = 1.5)
+    experiment[i,dx] = NA
+}
+
 p.GIMME = melt(prediction)$value
 e.GIMME = melt(experiment)$value
 
 # Figure 1C
-ids = e.GIMME > 1e-3   & abs(p.GIMME) > 1e-6
+ids = e.GIMME > 0  & abs(p.GIMME) > 0
+ids[is.na(ids)] = FALSE
 Nrxns = sum(ids)
 Nrxns
 GIMMEcor = cor.test(log10(p.GIMME[ids]),log10(e.GIMME[ids]),method = 'pearson')
+GIMMEcor 
 text = paste('r = ',signif(GIMMEcor$estimate^2,3),'\n','p = ',signif(GIMMEcor$p.value,3),sep = '')
 text
-pdf("./figures/for_pub/Figure 1C.pdf")
-ggplot(,aes(log10(p.GIMME[ids]),log10(e.GIMME[ids]))) + geom_point(color = "black")+ 
+pdf("./figures/for_pub/Figure S5B.pdf")
+ggplot(,aes(log10(p.GIMME[ids]),log10(e.GIMME[ids]))) + geom_point(color = "black")+ #geom_smooth(method = 'loess')+
       annotate(geom="text", x=-2, y=0.5, 
-               label = expression(atop(paste(italic(R)^2,' = 0.0018'),
-                                      paste(italic(P), '= 0.40'))),,
+               label = expression(atop(paste(italic(R)^2,' = 0.011'),
+                                      paste(italic(P), '= 0.047'))),,
                color="darkblue",size = 12,face = "italic")+
-      geom_abline(intercept=0,slope=1,size = 1.2,color = "darkblue")+#theme_bw()+
-      annotate(geom="text", x=0.1, y=0.5, label="1:1",color="darkblue",size = 14)+#ylim(-7,1.1)
-      lghplot.addtheme(size = 24)+ labs(title = "GIMME")+
+      geom_abline(intercept=0,slope=1,size = 1,color = "darkblue")+#theme_bw()+
+      annotate(geom="text", x=0.6, y=1, label="1:1",color="darkblue",size = 14)+#ylim(-7,1.1)
+      lghplot.addtheme(size = 24)+ labs(title = "GIMME")+xlim(-5,1)+ ylim(-5,1)+
       xlab("Predicted flux (log10 mmol/min/L)")+ylab("Experimental flux (log10 mmol/min/L)")
 dev.off()
 
@@ -226,25 +250,37 @@ dev.off()
 vrxns = intersect(rownames(benchflux.FastCore),rownames(FastCore))
 prediction = FastCore[vrxns,]
 experiment = benchflux.FastCore[vrxns,]
+
+aa = apply(experiment,1,median) > 1e-3
+prediction = prediction[aa,]
+experiment = experiment[aa,]
+
+
+for(i in 1:nrow(experiment)){
+    dx =is.outliner(experiment[i,],coef = 1.5)
+    experiment[i,dx] = NA
+}
+
 p.FastCore = melt(prediction)$value
 e.FastCore = melt(experiment)$value
 
 # Figure 1D
-ids = e.FastCore > 1e-3   & abs(p.FastCore) > 1e-6
+ids = e.FastCore > 0   & abs(p.FastCore) > 0
+ids[is.na(ids)] = FALSE
 Nrxns = sum(ids)
 FastCorecor = cor.test(log10(p.FastCore[ids]),log10(e.FastCore[ids]),method = 'pearson')
 FastCorecor
 text = paste('r = ',signif(FastCorecor$estimate^2,3),'\n','p = ',signif(FastCorecor$p.value,3),sep = '')
-pdf("./figures/for_pub/Figure 1D.pdf")
+pdf("./figures/for_pub/Figure S5C.pdf")
 text
-ggplot(,aes(log10(p.FastCore[ids]),log10(e.FastCore[ids]))) + geom_point(color = "black")+ # geom_smooth()+
-      annotate(geom="text", x=-3, y=1.3, 
-               label = expression(atop(paste(italic(R)^2,' = 0.26'),
-                                      paste(italic(P), '= 1.1e-23'))),
+ggplot(,aes(log10(p.FastCore[ids]),log10(e.FastCore[ids]))) + geom_point(color = "black")+ #geom_smooth(method = 'loess')+
+      annotate(geom="text", x=-2, y=1.36, 
+               label = expression(atop(paste(italic(R)^2,' = 0.31'),
+                                      paste(italic(P), '= 3.09e-24'))),
                color="darkblue",size = 12)+
       geom_abline(intercept=0,slope=1,size = 1.2,color = "darkblue")+#theme_bw()+
-      annotate(geom="text", x=0.85, y=1.3, label="1:1",color="black",size = 14)+ylim(-3.1,1.55) +
-      lghplot.addtheme(size = 24)+ labs(title = "FastCore")+
+      annotate(geom="text", x=0.95, y=1.5, label="1:1",color="black",size = 14)+
+      lghplot.addtheme(size = 24)+ labs(title = "FastCore")+xlim(-5,1.7)+ylim(-5,1.7)+
       xlab("Predicted flux (log10 mmol/min/L)")+ylab("Experimental flux (log10 mmol/min/L)")
 dev.off()
 
@@ -256,29 +292,29 @@ GPMMcor.lac = cor.test(GPMM[ida,],benchflux.GPMM[ida,],method = 'pearson')
 
 text = paste('r2 = ',signif(GPMMcor.lac$estimate^2,2),'\n','p = ',signif(GPMMcor.lac$p.value,2),sep = '')
 text
-pdf("./figures/for_pub/Figure 1E.pdf")
-ggplot(,aes(GPMM[ida,],benchflux.GPMM[ida,])) + geom_point(color = "black")+ 
+pdf("./figures/for_pub/Figure 1B.pdf")
+ggplot(,aes(GPMM[ida,],benchflux.GPMM[ida,])) + geom_point(size = 4,color = "black")+ 
 
-      annotate(geom="text", x=2.5, y=6, #label=text,
+      annotate(geom="text", x=2.5, y=6, #fontface =2,#label=text,
                label = expression(atop(paste(italic(R)^2,' = 0.86'),
                                       paste(italic(P), '= 2.2e-24'))),
                
                color="darkblue",size = 12)+
-      geom_abline(intercept=0,slope=1,size = 1.2,color = "darkblue")+#theme_bw()+
+      geom_abline(intercept=0,slope=1,size = 2,color = "darkblue")+#theme_bw()+
       annotate(geom="text", x=6.5, y=7, label="1:1",color="black",size = 14)+
-      lghplot.addtheme(size = 24)+ ylim(0,7)+labs(title = "GPMM")+
+      lghplot.addtheme(size = 26)+ ylim(0,7)+labs(title = "GPMM")+
       xlab("Predicted flux (mmol/min/L)")+ylab("Experimental flux (mmol/min/L)")
 dev.off()
 
 ida = 'EX_lac_L(e)'
 GIMMEcor.lac = cor.test(GIMME[ida,],benchflux.GIMME[ida,],method = 'pearson')
 text = paste('r = ',signif(GIMMEcor.lac$estimate,3),'\n','p = ',signif(GIMMEcor.lac$p.value,3),sep = '')
-pdf("./figures/for_pub/Figure 1F.pdf")
-ggplot(,aes(GIMME[ida,],benchflux.GIMME[ida,])) + geom_point(color = "black")+ 
+pdf("./figures/for_pub/Figure 1C.pdf")
+ggplot(,aes(GIMME[ida,],benchflux.GIMME[ida,])) + geom_point(size=4,color = "black")+ 
       #annotate(geom="text", x=2.5, y=6, label=text,color="darkblue",size = 12)+
-      geom_abline(intercept=0,slope=1,size = 1.2,color = "darkblue")+#theme_bw()+
+      geom_abline(intercept=0,slope=1,size = 2,color = "darkblue")+#theme_bw()+
       annotate(geom="text", x=5.8, y=6.4, label="1:1",color="black",size = 14)+
-      lghplot.addtheme(size = 24)+ ylim(0,7)+ xlim(0,6)+labs(title = "GIMME")+
+      lghplot.addtheme(size = 26)+ ylim(0,7)+ xlim(0,6)+labs(title = "GIMME")+
       xlab("Predicted flux (mmol/min/L)")+ylab("Experimental flux (mmol/min/L)")
 dev.off()
 
@@ -289,15 +325,15 @@ text = paste('r2 = ',signif(FastCorecor.lac$estimate^2,2),'\n','p = ',signif(Fas
 text
 
 
-pdf("./figures/for_pub/Figure 1G.pdf")
-ggplot(,aes(FastCore[ida,],benchflux.FastCore[ida,])) + geom_point(color = "black")+ 
+pdf("./figures/for_pub/Figure 1D.pdf")
+ggplot(,aes(FastCore[ida,],benchflux.FastCore[ida,])) + geom_point(size = 4,color = "black")+ 
       annotate(geom="text", x=2.5, y=6, #label=text,
                label = expression(atop(paste(italic(R)^2,' = 0.088'),
                                       paste(italic(P), '= 0.022'))),
                color="darkblue",size = 12)+
-      geom_abline(intercept=0,slope=1,size = 1.2,color = "darkblue")+#theme_bw()+
+      geom_abline(intercept=0,slope=1,size = 2,color = "darkblue")+#theme_bw()+
       annotate(geom="text", x=6.5, y=7, label="1:1",color="black",size = 14)+
-      lghplot.addtheme(size = 24)+ ylim(0,7)+labs(title = "FastCore")+
+      lghplot.addtheme(size = 26)+ ylim(0,7)+labs(title = "FastCore")+
       xlab("Predicted flux (mmol/min/L)")+ylab("Experimental flux (mmol/min/L)")
 dev.off()
 
@@ -438,9 +474,10 @@ for (k in 1:nboot){
 
 # we suggest save bootstrap
 #save(list = c('flux3.log2','lmflux3','flux3.annote','clin','bootstrapLmflux3'),file = './metabolic_modeling_centenarians/Flux3_lm_bootstrp.Rdata')
-load('./metabolic_modeling_centenarians/Flux3_lm_bootstrp.Rdata')
-rownames(lmflux3) = rownames(flux3.log2)
-lmflux3 = cbind(lmflux3,flux3.annote)
+#load('./metabolic_modeling_centenarians/Flux3_lm_bootstrp.Rdata')
+#
+#rownames(lmflux3) = rownames(flux3.log2)
+#lmflux3 = cbind(lmflux3,flux3.annote)
 
 # remove age effect
 sum(lmflux3$beta.cen >0 &  lmflux3$p.cen < 0.05 & lmflux3$p.age < 0.05 & lmflux3$beta.age >0)
@@ -478,10 +515,10 @@ beta_direct[bx.cen$beta.cen > 0 ] = 'UP'
 beta_direct[bx.cen$beta.cen <= 0 ] = 'Down'
 bx.cen$effect = as.character(beta_direct)
 
-#pdf('./figures/Figure_uptake_lmbased_cen_DAplot.pdf')
+pdf('./figures/for_pub/Figure_2B_DAplot.pdf')
 print(plot_DAscore(bx.cen$beta.cen,bx.cen$names,bx.cen$p.cen,xlabel = 'Beta.cen',gtype = 'pvalue',
                    gsize = 18,gtitle = 'Uptake change in CEN',lengend.position = 'right'))
-#dev.off()
+dev.off()
 
 # Volcono plot of centenarians effect
 # set the base colour as 'black' 
@@ -586,14 +623,14 @@ beta_direct[bx.cen$beta.cen > 0 ] = 'UP'
 beta_direct[bx.cen$beta.cen <= 0 ] = 'Down'
 bx.cen$effect = as.character(beta_direct)
 
-pdf('./figures/for_pub/Figure S5A.pdf',width = 8,height = 6)
+pdf('./figures/for_pub/Figure S6A.pdf',width = 8,height = 6)
 print(plot_DAscore(bx.cen$beta.cen,bx.cen$names,bx.cen$p.cen,xlabel = 'Beta.cen',gtype = 'pvalue',
                    gsize = 22,gsizex = 22,gsizey = 22,
                    gtitle = 'OP complexes',lengend.position = 'right'))
 dev.off()
 
 # ATP production
-pdf("./figures/for_pub/Figure S5B.pdf",width = 5,height = 6)
+pdf("./figures/for_pub/Figure S6B.pdf",width = 5,height = 6)
 text = paste('p = ',signif(lmflux3['DM_atp_c_',]$p.cen,2),'\n','beta = ',signif(lmflux3['DM_atp_c_',]$beta.cen,2),sep = '')
 id = clin$Class != 'F1'
 p= ggplot(,aes(x = clin$Class[id],y = unlist(flux3.log2['DM_atp_c_',id]), fill = clin$Class[id], color = clin$Class[id])) +
@@ -678,6 +715,7 @@ for (k in 1:nboot){
 
 #save(list = c('lmMet','met.expr','clin.met','met.header','bootstraplmMet'),file = './metabolic_modeling_centenarians/Met_lm_bootstrp.Rdata')
 #load('./metabolic_modeling_centenarians/Met_lm_bootstrp.Rdata')
+#
 #
 
 # cen
@@ -789,7 +827,7 @@ p = ggplot(,aes(x = clin.met$Class[ida],y = met.expr[id,ida],color = clin.met$Cl
 lghplot.addthemeA(size = 24) + labs(y=expression(Log[2]("Peak Area")))  + xlab('')+labs(title = "Trans-Vaccenic")
 print(lghplot.boxplot(p))
 dev.off()
-pdf('./figures/for_pub/Figure 3E_Palmitic acid.pdf',width = 5,height = 6)
+pdf('./figures/for_pub/Figure 3F_Palmitic acid.pdf',width = 5,height = 6)
 id = lmMet$met_name == 'Palmitic acid' & lmMet$score > 0.8  & clin.met$Class != 'F1'
 p = ggplot(,aes(x = clin.met$Class[ida],y = met.expr[id,ida],color = clin.met$Class[ida],fill = clin.met$Class[ida]))+
 lghplot.addthemeA(size = 24) + ylab('') + xlab('')+labs(title = "Palmitic acid")
@@ -801,7 +839,7 @@ bx = lm(clin.met$TC ~ (clin.met$Class=='C') +  (clin.met$Gender == 'Female'),sub
 tpval = car::Anova(bx)$`Pr(>F)`[1]
 tbeta = bx$coefficients[2]
 
-pdf("./figures/for_pub/Figure S6.pdf")
+pdf("./figures/for_pub/Figure S7.pdf")
 text = paste('p = ',signif(tpval,2),'\n','beta = ',signif(tbeta,2),sep = '')
 id = clin.met$Class != 'F1'
 p= ggplot(,aes(x = clin.met$Class[id],y = clin.met$TC[id], fill = clin.met$Class[id], color = clin.met$Class[id])) +
@@ -810,10 +848,9 @@ annotate(geom="text", x='C', y=9, label=text,color="darkblue",size = 12)
 print(lghplot.boxplot(p))
 dev.off()
 
-protein = file2frame('./metabolic_modeling_centenarians/proteomics_270_matarix_simplifyA.txt')
-protein = protein[,-c(2,3)]
+protein = file2frame('./metabolic_modeling_centenarians/proteomics_CMWN.txt')
 protein.matrix = as.matrix(protein[,-1])
-protein.genes = protein$Gene.name
+protein.genes = protein$protein.genes
 colnames(protein.matrix) = sub('S','X',colnames(protein.matrix))
 clin.protein = file2frame('./metabolic_modeling_centenarians/Hainan_CMWN_Clinical_simple.txt',row.names = 1)
 list[IA,IB] = ismember(colnames(protein.matrix),rownames(clin.protein))
@@ -833,14 +870,14 @@ id = (clin.protein$Class == 'C' | clin.protein$Class == 'F1SP') & ia
 
 bx = t.test(ADIPOQ~clin.protein$Class == 'C',subset = clin.protein$Class != 'F1' & id)
 text = paste('p = ',signif(bx$p.value,2),sep = '')
-pdf("./figures/for_pub/Figure 4A.pdf")
+pdf("./figures/for_pub/Figure 3G.pdf")
 ggplot(,aes(clin.protein$Class[id],ADIPOQ[id],color = clin.protein$Class[id])) +geom_boxplot(outlier.size = -1) + 
       geom_jitter(height = 0,size =2) + 
       lghplot.addthemeA(sizex = 24,sizey = 22,size = 24) + ylim(0,0.4)+ xlab('')+ylab('ADIPOQ relative concentration')+
       annotate(geom="text", x='F1SP', y=0.3, label=text,color="darkblue",size = 10)
 dev.off()
 
-pdf("./figures/for_pub/Figure 4B.pdf")
+pdf("./figures/for_pub/Figure 3H.pdf")
 id = protein.genes == 'ADIPOQ'
 ADIPOQ = protein.matrix[id,]
 list[ia,ib] = ismember(rownames(clin.protein),colnames(flux3.log2))
@@ -856,7 +893,7 @@ agmatine = file2frame('./metabolic_modeling_centenarians/agmatine_from_GC.txt')
 rownames(agmatine) = paste0('X',agmatine$ID)
 clin.agmatine = file2frame('./metabolic_modeling_centenarians/Hainan_CMWN_Clinical_simple.txt',row.names = 1)
 clin.agmatine = clin.agmatine[rownames(agmatine),]
-pdf("./figures/for_pub/Figure S7A.pdf")
+pdf("./figures/for_pub/Figure S8A.pdf")
 id = (clin.agmatine$Class == 'C' | clin.agmatine$Class == 'F1SP')
 
 bx = t.test(agmatine$agmatine~clin.agmatine$Class == 'C',subset = clin.agmatine$Class != 'F1' & id)
@@ -868,7 +905,7 @@ p = ggplot(,aes(clin.agmatine$Class[id],agmatine$agmatine[id],color = clin.agmat
 print(lghplot.boxplot(p))
 dev.off()
 
-pdf("./figures/for_pub/Figure S7B_1.pdf")
+pdf("./figures/for_pub/Figure S8B.pdf")
 id = protein.genes == 'LEP'
 LEP = protein.matrix[id,]
 #text = paste('p = ',signif(lmflux3['HMR_3406',]$p.cen,2),'\n','beta = ',signif(lmflux3['HMR_3406',]$beta.cen,2),sep = '')
