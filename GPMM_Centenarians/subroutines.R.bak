@@ -174,14 +174,14 @@ plot_DAscore <- function(DAscore,subsystem,fdr,
 
   #ylab(bquote(~-Log[10]~italic(FDR)))
   if (gtype == 'fdr'){
-      p = ggplot(plotdata,aes(x = subsystem,y = DAscore)) + scale_shape_discrete(solid=T)+scale_size_discrete(range =enlarge*c(2,5))+
+      p = ggplot(plotdata,aes(x = subsystem,y = DAscore)) + scale_shape_discrete(solid=T)+scale_size_discrete(range =enlarge*c(1,4))+
         geom_point(aes(colour = Significance,size = FDR))+
         scale_colour_manual(values=gcolors[tid])+ ggtitle(gtitle)+
         xlab('')+ ylab(xlabel)+ 
         coord_flip()+lghplot.addthemeA(size =  gsize,sizex = gsizex,sizey = gsizey,legend.position = lengend.position)
   }else{
     plotdata$Pvalue = FDR[idx]
-    p = ggplot(plotdata,aes(x = subsystem,y = DAscore)) + scale_shape_discrete(solid=T)+scale_size_discrete(range =enlarge*c(2,5))+
+    p = ggplot(plotdata,aes(x = subsystem,y = DAscore)) + scale_shape_discrete(solid=T)+scale_size_discrete(range =enlarge*c(1,4))+
       geom_point(aes(colour = Significance,size = Pvalue))+
       scale_colour_manual(values=gcolors[tid])+ ggtitle(gtitle)+
       xlab('')+ ylab(xlabel)+ 
