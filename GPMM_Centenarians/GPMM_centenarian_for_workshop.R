@@ -1,7 +1,3 @@
-## 1 set pwd and subroutines
-
-
-```R
 options(warn = -1)    
 library(ggplot2)
 library(reshape2)
@@ -14,26 +10,14 @@ library(car)
 library(gridExtra)
 setwd("E:/github/Code_for_publications/GPMM_Centenarians")
 source('./subroutines.R')
-```
 
-## 2 Design GPMM
-
-### 2.1 Read data
-
-
-```R
 Recon3.annote = file2frame('./data/Recon3_rxns_curated.txt')
 rownames(Recon3.annote) = Recon3.annote$rxns
 HPM = as.matrix(file2frame('./data/human_moped_Kim_nM.txt',row.names = 1))
 RNA = as.matrix(file2frame('./data/human_RNA_matrix.txt',row.names = 1))
 colnames(HPM) = capitalize(colnames(HPM))
 colnames(RNA) = capitalize(colnames(RNA))
-```
 
-### 2.2 Kcat related Figure S1
-
-
-```R
 # Number of EC
 id_Kcat = Recon3.annote$Kcat >0;
 sum(id_Kcat)
@@ -62,28 +46,7 @@ ggplot(,aes(x = x_axis,y = c(ratio_noKcat,perc_noKcat),color = Type,fill = Type)
         xlab("Tissues")+ylab("Fraction of reaction without Kcats ") +
         lghplot.addthemeA(hjust = 1,size = 16,sizex = 12,sizey = 12,legend.position = 'top')
 dev.off()
-```
 
-
-2602
-
-
-
-4517
-
-
-
-0.424839495240204
-
-
-
-<strong>png:</strong> 2
-
-
-### 2.3 mRNA vs Protein abundance: Figure S2
-
-
-```R
 overlapgenes = intersect(rownames(RNA),rownames(HPM))
 RNA.v = log2(RNA[overlapgenes,]+1)
 HPM.v = log2(HPM[overlapgenes,]+1)
@@ -102,39 +65,20 @@ for(i in 1:ncol(HPM.v)){
         ylab('')+
          ggtitle(colnames(HPM.v)[i])
 }
-```
 
-
-```R
 pdf(file = "./figures/for_pub/v2/Figure S2.pdf",)
 grid.arrange(arrangeGrob(grobs = p,ncol = 4,
                          bottom=textGrob('mRNA expression(log2 FPKM)', gp=gpar(fontface="bold",  fontsize=22)),
                         left = textGrob('Protein abundance(log2 HPM)', gp=gpar(fontface="bold",  fontsize=22),rot=90)))
 dev.off()
 
-```
 
-
-<strong>png:</strong> 2
-
-
-
-```R
 png(file = "./figures/for_pub/v2/Figure S2.png",width = 1000,height = 1000)
 grid.arrange(arrangeGrob(grobs = p,ncol = 4,
                          bottom=textGrob('mRNA expression(log2 FPKM)', gp=gpar(fontface="bold",  fontsize=22)),
                         left = textGrob('Protein abundance(log2 HPM)', gp=gpar(fontface="bold",  fontsize=22),rot=90)))
 dev.off()
-```
 
-
-<strong>png:</strong> 2
-
-
-### 2.4 predicted Protein vs Measured Protein: Figure S3
-
-
-```R
 # get ratio
 HPM.overlap = HPM[overlapgenes,]
 RNA.overlap = RNA[overlapgenes,]
@@ -151,10 +95,7 @@ HPM.prediction = RNA.overlap[!id,]*ratio
 
 pred.log2 =  log2(HPM.prediction+1)
 meas.log2 = log2(HPM.overlap[!id,]+1)
-```
 
-
-```R
 p1 =list()
 for(i in 1:ncol(meas.log2)){
     idaa = pred.log2[,i] > 0 & meas.log2[,i] > 0
@@ -170,41 +111,20 @@ for(i in 1:ncol(meas.log2)){
         ylab('')+
          ggtitle(colnames(meas.log2)[i])
 }
-```
 
-
-```R
 pdf(file = "./figures/for_pub/v2/Figure S3.pdf",)
 grid.arrange(arrangeGrob(grobs = p1,ncol = 4,
                          bottom=textGrob('Predicted protein abundance (log2 HPM)', gp=gpar(fontface="bold",  fontsize=22)),
                         left = textGrob('Protein abundance (log2 HPM)', gp=gpar(fontface="bold",  fontsize=22),rot=90)))
 
 dev.off()
-```
 
-
-<strong>png:</strong> 2
-
-
-
-```R
 png(file = "./figures/for_pub/v2/Figure S3.png",width = 1000,height = 1000)
 grid.arrange(arrangeGrob(grobs = p1,ncol = 4,
                          bottom=textGrob('Predicted protein abundance (log2 HPM)', gp=gpar(fontface="bold",  fontsize=22)),
                         left = textGrob('Protein abundance (log2 HPM)', gp=gpar(fontface="bold",  fontsize=22),rot=90)))
 dev.off()
-```
 
-
-<strong>png:</strong> 2
-
-
-## 3 Benchmarking GPMM
-
-### 3.1 robust analysis
-
-
-```R
 # robust all
 GPMM= as.matrix(file2frame("./benchmark/robust_all_GPMM_fluxRxnsMean.txt",row.names = 1))
 flux3.annote = file2frame("./benchmark/Recon3_rxns_v1b.txt",row.names = 1)
@@ -245,14 +165,7 @@ ggplot(xx,aes(x = Var2,y = value^2))+ geom_boxplot()+lghplot.addtheme(size = 28,
   xlab('NCI 60 Noised sample type')+ ylab("R-Squared")+ ylim(0.95,1)
 dev.off()
 
-```
 
-
-<strong>png:</strong> 2
-
-
-
-```R
 #robust analysis_ 0.05noise_LC_NCI_H460
 robust =as.matrix(file2frame("./benchmark/robust_GPMM_0.05noise_LC_NCI_H460_fluxRxnsMean.txt",row.names = 1))
 robust = robust[rowMeans(abs(robust)) > 1e-6,] # remain the flux with the overall precison of >1e-6
@@ -270,14 +183,7 @@ ggplot(,aes(x = 1:100,y = tcor^2)) + geom_point(color = "black")+ geom_line(colo
       lghplot.addtheme(size = 24)+  labs(title = "Robust")+ylim(0.95,1.0)+
       xlab("Noised Sample(0.05)")+ylab("R-Squared")
 dev.off()
-```
 
-
-<strong>png:</strong> 2
-
-
-
-```R
 tmp = data.frame(lactate_atp = c(c(as.vector(robust['EX_lac_L(e)',])),
                                c(as.vector(robust['DM_atp_c_',]))),
                  Reaction = c(rep('Lactate secretion',101),rep('ATP production',101)),
@@ -291,16 +197,7 @@ ggplot(tmp,aes(x = tx,y = lactate_atp,color = Reaction)) + geom_point(aes(shape 
       ggsci::scale_color_aaas()+
       xlab("Noised Sample(0.05)")+ylab("mmol/min/L")
 dev.off()
-```
 
-
-<strong>png:</strong> 2
-
-
-### 3.2 Read data
-
-
-```R
 # read original data
 GPMM= as.matrix(file2frame("./benchmark/GPMM_fluxRxnsMean.txt",row.names = 1))
 GIMME = as.matrix(file2frame("./benchmark/GIMME_fluxRxnsMean.txt",row.names = 1))
@@ -341,12 +238,7 @@ clin.rFASTCORMICS = clin[vid,]
 benchflux.rFASTCORMICS = benchflux[,vid]
 
 
-```
 
-### 3.3 Benchmark GPMM: Figure S4A
-
-
-```R
 vrxns = intersect(rownames(benchflux.GPMM),rownames(GPMM))
 prediction = GPMM[vrxns,]
 experiment = benchflux.GPMM[vrxns,]
@@ -384,39 +276,7 @@ ggplot(,aes(log10(p.GPMM[ids]),log10(e.GPMM[ids]))) + geom_point(color = "black"
       xlab("Predicted flux (log10 mmol/min/L)")+ylab("Experimental flux (log10 mmol/min/L)")
 dev.off()
 
-```
 
-
-381
-
-
-
-    
-    	Pearson's product-moment correlation
-    
-    data:  log10(abs(p.GPMM[ids])) and log10(abs(e.GPMM[ids]))
-    t = 31.103, df = 379, p-value < 2.2e-16
-    alternative hypothesis: true correlation is not equal to 0
-    95 percent confidence interval:
-     0.8167330 0.8737094
-    sample estimates:
-          cor 
-    0.8476473 
-    
-
-
-
-'R-Squred = 0.72\np = 2.3e-106'
-
-
-
-<strong>png:</strong> 2
-
-
-### 3.4 Benchmark GIMME: Figure S4B
-
-
-```R
 vrxns = intersect(rownames(benchflux.GIMME),rownames(GIMME))
 prediction = GIMME[vrxns,]
 experiment = benchflux.GIMME[vrxns,]
@@ -453,39 +313,7 @@ ggplot(,aes(log10(p.GIMME[ids]),log10(e.GIMME[ids]))) + geom_point(color = "blac
       xlab("Predicted flux (log10 mmol/min/L)")+ylab("Experimental flux (log10 mmol/min/L)")
 dev.off()
 
-```
 
-
-364
-
-
-
-    
-    	Pearson's product-moment correlation
-    
-    data:  log10(p.GIMME[ids]) and log10(e.GIMME[ids])
-    t = 1.9923, df = 362, p-value = 0.04709
-    alternative hypothesis: true correlation is not equal to 0
-    95 percent confidence interval:
-     0.001367658 0.204744486
-    sample estimates:
-          cor 
-    0.1041447 
-    
-
-
-
-'r = 0.0108\np = 0.0471'
-
-
-
-<strong>png:</strong> 2
-
-
-### 3.5 Benchmark FastCore: Figure S4C
-
-
-```R
 vrxns = intersect(rownames(benchflux.FastCore),rownames(FastCore))
 prediction = FastCore[vrxns,]
 experiment = benchflux.FastCore[vrxns,]
@@ -524,43 +352,7 @@ ggplot(,aes(log10(p.FastCore[ids]),log10(e.FastCore[ids]))) + geom_point(color =
       lghplot.addtheme(size = 24)+ labs(title = "FastCore")+xlim(-5,1.7)+ylim(-5,1.7)+
       xlab("Predicted flux (log10 mmol/min/L)")+ylab("Experimental flux (log10 mmol/min/L)")
 dev.off()
-```
 
-
-286
-
-
-
-    
-    	Pearson's product-moment correlation
-    
-    data:  log10(p.FastCore[ids]) and log10(e.FastCore[ids])
-    t = 11.172, df = 282, p-value < 2.2e-16
-    alternative hypothesis: true correlation is not equal to 0
-    95 percent confidence interval:
-     0.4676639 0.6297003
-    sample estimates:
-          cor 
-    0.5539053 
-    
-
-
-
-3.08802965647823e-24
-
-
-
-'r = 0.307\np = 3.09e-24'
-
-
-
-<strong>png:</strong> 2
-
-
-### 3.6 Benchmark rFASTCORMICS:Figure S4D
-
-
-```R
 vrxns = intersect(rownames(benchflux.rFASTCORMICS),rownames(rFASTCORMICS))
 prediction = rFASTCORMICS[vrxns,]
 experiment = benchflux.rFASTCORMICS[vrxns,]
@@ -599,43 +391,7 @@ ggplot(,aes(log10(p.rFASTCORMICS[ids]),log10(e.rFASTCORMICS[ids]))) + geom_point
       lghplot.addtheme(size = 24)+ labs(title = "rFASTCORMICS")+xlim(-5,1.7)+ylim(-5,1.7)+
       xlab("Predicted flux (log10 mmol/min/L)")+ylab("Experimental flux (log10 mmol/min/L)")
 dev.off()
-```
 
-
-363
-
-
-
-    
-    	Pearson's product-moment correlation
-    
-    data:  log10(p.rFASTCORMICS[ids]) and log10(e.rFASTCORMICS[ids])
-    t = 18.549, df = 361, p-value < 2.2e-16
-    alternative hypothesis: true correlation is not equal to 0
-    95 percent confidence interval:
-     0.6417695 0.7477249
-    sample estimates:
-          cor 
-    0.6985566 
-    
-
-
-
-2.01156164422636e-54
-
-
-
-'r = 0.488\np = 2.01e-54'
-
-
-
-<strong>png:</strong> 2
-
-
-### 3.7 Prediction lactate  GPMM: Figure 2E
-
-
-```R
 ida = 'EX_lac_L(e)'
 GPMMcor.lac = cor.test(GPMM[ida,],benchflux.GPMM[ida,],method = 'pearson')
 #text = paste('r = ',signif(GPMMcor.lac$estimate,3),'\n','p = ',signif(GPMMcor.lac$p.value,3),sep = '')
@@ -657,20 +413,7 @@ ggplot(,aes(GPMM[ida,],benchflux.GPMM[ida,])) + geom_point(size = 4,color = "bla
       lghplot.addtheme(size = 26)+ ylim(0,7)+labs(title = "GPMM")+
       xlab("Predicted flux (mmol/min/L)")+ylab("Experimental flux (mmol/min/L)")
 dev.off()
-```
 
-
-'r2 = 0.86\np = 2.2e-24'
-
-
-
-<strong>png:</strong> 2
-
-
-### 3.8  Prediction lactate GIMME: Figure 2F
-
-
-```R
 ida = 'EX_lac_L(e)'
 GIMMEcor.lac = cor.test(GIMME[ida,],benchflux.GIMME[ida,],method = 'pearson')
 text = paste('r = ',signif(GIMMEcor.lac$estimate,3),'\n','p = ',signif(GIMMEcor.lac$p.value,3),sep = '')
@@ -682,16 +425,7 @@ ggplot(,aes(GIMME[ida,],benchflux.GIMME[ida,])) + geom_point(size=4,color = "bla
       lghplot.addtheme(size = 26)+ ylim(0,7)+ xlim(0,6)+labs(title = "GIMME")+
       xlab("Predicted flux (mmol/min/L)")+ylab("Experimental flux (mmol/min/L)")
 dev.off()
-```
 
-
-<strong>png:</strong> 2
-
-
-### 3.9 Prediction lactate FastCore: Figure 2G
-
-
-```R
 ida = 'EX_lac_L(e)'
 FastCorecor.lac = cor.test(FastCore[ida,],benchflux.FastCore[ida,],method = 'pearson')
 #text = paste('r = ',signif(FastCorecor.lac$estimate,3),'\n','p = ',signif(FastCorecor.lac$p.value,3),sep = '')
@@ -710,20 +444,7 @@ ggplot(,aes(FastCore[ida,],benchflux.FastCore[ida,])) + geom_point(size = 4,colo
       lghplot.addtheme(size = 26)+ ylim(0,7)+labs(title = "FastCore")+
       xlab("Predicted flux (mmol/min/L)")+ylab("Experimental flux (mmol/min/L)")
 dev.off()
-```
 
-
-'r2 = 0.088\np = 0.022'
-
-
-
-<strong>png:</strong> 2
-
-
-### 3.10 prediction lactate rFASTCORMICS: Figure 2H
-
-
-```R
 ida = 'EX_lac_L(e)'
 rFASTCORMICScor.lac = cor.test(rFASTCORMICS[ida,],benchflux.rFASTCORMICS[ida,],method = 'pearson')
 text = paste('r2 = ',signif(rFASTCORMICScor.lac$estimate^2,2),'\n','p = ',signif(rFASTCORMICScor.lac$p.value,2),sep = '')
@@ -741,20 +462,7 @@ ggplot(,aes(rFASTCORMICS[ida,],benchflux.rFASTCORMICS[ida,])) + geom_point(size 
       lghplot.addtheme(size = 26)+ ylim(0,7)+labs(title = "rFASTCORMICS")+
       xlab("Predicted flux (mmol/min/L)")+ylab("Experimental flux (mmol/min/L)")
 dev.off()
-```
 
-
-'r2 = 0.33\np = 1.8e-06'
-
-
-
-<strong>png:</strong> 2
-
-
-### 3.11 compare ecModel from science signaling 2020
-
-
-```R
 ecfluxes = file2frame('./benchmark/compare_ecModel/ec_GEMs/Results/11_cellLines_NCI60/ecModels_const_0_exchangeFluxesComp.txt',row.names = 1)
 ecfluxes = ecfluxes[,-1]
 ia = 2*(1:(ncol(ecfluxes)/2))
@@ -787,30 +495,7 @@ ggplot(tmpdata,aes(tprediction,tmeasured)) + geom_point(size = 4)+
       #geom_smooth(se = FALSE, method = "gam", formula = y~x ) 
 dev.off()
 
-```
 
-    No id variables; using all as measure variables
-    No id variables; using all as measure variables
-    
-
-
-43
-
-
-
-34
-
-
-
-'r = 0.265\np = 3.71e-06'
-
-
-
-<strong>png:</strong> 2
-
-
-
-```R
 ecfluxes = file2frame('./benchmark/compare_ecModel/ec_GEMs/Results/11_cellLines_NCI60/ecModels_const_0_exchangeFluxesComp.txt',row.names = 1)
 ecfluxes = ecfluxes['HMR_9135',-1]
 
@@ -831,26 +516,7 @@ ggplot(fluxes.ecmodel,aes(Allprediction,Allexperiment)) + geom_point(size = 4,co
       lghplot.addtheme(size = 26)+ labs(title = "ecModel")+xlim(0,100)+ylim(0,100)+
       xlab("Predicted flux (mmol/min/L)")+ylab("Experimental flux (mmol/min/L)")
 dev.off()
-```
 
-    No id variables; using all as measure variables
-    No id variables; using all as measure variables
-    
-
-
-'r2 = 0.0033\np = 0.87'
-
-
-
-<strong>png:</strong> 2
-
-
-## 4 Metabolic modeling of centenarians using GPMM
-
-### 4.1 Read data
-
-
-```R
 flux3 = file2frame('./metabolic_modeling_centenarians/Hainan_CMWN_fluxRxnsMean_cen_fpkm_counts_cds_cmwn_combat_20191112.txt',row.names = 1)
 flux3.annote = file2frame('./metabolic_modeling_centenarians/Recon3_rxns_v1b.txt',row.names = 1)
 clin = file2frame('./metabolic_modeling_centenarians/Hainan_CMWN_Clinical_full.txt',row.names = 1)
@@ -863,12 +529,7 @@ flux3.log2= as.matrix(log2(abs(flux3)+1e-6))
 list[IA,IB] = ismember(rownames(flux3.log2),rownames(flux3.annote))
 flux3.annote = flux3.annote[IB,]
 
-```
 
-### 4.2 Differential flux analysis
-
-
-```R
 # two linear model
 # For centenarian effect:   flux ~ cen + sex     subset: not F1
 # For ageing effect:  flux~ age +sex  subset: not centenariains
@@ -902,10 +563,7 @@ lmflux3 = cbind(lmflux3,flux3.annote)
 idaa = lmflux3$p.cen < 0.05 & lmflux3$p.age < 0.05 & lmflux3$beta.cen * lmflux3$beta.age > 0
 lmflux3.filter = lmflux3
 lmflux3.filter$p.cen[idaa] =1
-```
 
-
-```R
 # bootstrap without replacement for lmflux3
 # two linear model random
 # For centenarian effect:   flux ~ cen + sex     subset: not F1
@@ -942,42 +600,20 @@ for (k in 1:nboot){
      }
 }
 
-```
 
-
-```R
 save(list = c('flux3.log2','lmflux3','lmflux3.filter','flux3.annote','clin','bootstrapLmflux3'),file = './metabolic_modeling_centenarians/Flux3_lm_bootstrp_v20211112.Rdata')
 
-```
 
-
-```R
 # we suggest save bootstrap
 load('./metabolic_modeling_centenarians/Flux3_lm_bootstrp_v20211112.Rdata')
 
-```
 
-
-```R
 # remove age effect
 sum(lmflux3$beta.cen >0 &  lmflux3$p.cen < 0.05 & lmflux3$p.age < 0.05 & lmflux3$beta.age >0)
 lmflux3$p.cen[lmflux3$beta.cen >0 &  lmflux3$p.cen < 0.05 & lmflux3$p.age < 0.05 & lmflux3$beta.age >0 ] = 1
 sum(lmflux3$beta.cen <0 &  lmflux3$p.cen < 0.05 & lmflux3$p.age < 0.05 & lmflux3$beta.age <0)
 lmflux3$p.cen[lmflux3$beta.cen <0 &  lmflux3$p.cen < 0.05 & lmflux3$p.age < 0.05 & lmflux3$beta.age <0 ] = 1
-```
 
-
-1
-
-
-
-2
-
-
-#### 4.2.1 Uptake change : Figure 3B
-
-
-```R
 # Volcono plot of centenarians effect
 # set the base colour as 'black' 
 idaa = lmflux3.filter$subSystemes == 'Exchange/demand reaction' & rowMeans(flux3) < 0 & substr(rownames(lmflux3.filter),1,2) == 'EX' & rowMeans(flux3.log2) > log2(1e-5)
@@ -1000,16 +636,7 @@ EnhancedVolcano(res2, lab = rownames(res2),   x = 'beta.cen', pCutoff = 0.05,cut
                 subtitle = NULL,transcriptPointSize = -5*log10(res2$p.cen),transcriptLabSize = 8,boxedlabels = F,
                 y = 'p.cen',    xlim = c(-0.6, 0.6),ylim= c(0,3), xlab = "Cen effect(beta lm) ", colCustom = keyvals)
 dev.off()
-```
 
-
-<strong>png:</strong> 2
-
-
-#### 4.2.2 Figure 3D DA transport
-
-
-```R
 # calc WDA and pvalue
 tmplmflux = lmflux3.filter
 tmplmflux$log2FC = lmflux3.filter$beta.cen
@@ -1017,41 +644,20 @@ tmplmflux$Pvalue = lmflux3.filter$p.cen
 WDA.cen.bootstrap = Flux.subsystem_WDA_bootstrap(tmplmflux,bootstrapLmflux3[[1]], bootstrapLmflux3[[2]],
                                        flux3.annote,cutoff.nrxns = 3,cutoff.pval =0.05,cutoff.fc = 0)
 
-```
 
-
-```R
 pdf('./figures/for_pub/v2/Figure 3D.pdf',width = 11,height =8)
 idaa = substr(WDA.cen.bootstrap$subsystem,1,9) == 'Transport'
 print(plot_DAscore(WDA.cen.bootstrap$DAscore[idaa],WDA.cen.bootstrap$subsystem[idaa],enlarge = 1.8,gtitle = 'Transport fluxes',
                    #lengend.position = "top", 
                    WDA.cen.bootstrap$fdr[idaa],gsize =28,gsizex = 20,gsizey = 24))
 dev.off()
-```
 
-
-<strong>png:</strong> 2
-
-
-#### 4.2.3 Figure  2C DA enzymatic reaction
-
-
-```R
 pdf('./figures/for_pub/v2/Figure 3C.pdf',width = 15,height =18)
 idaa = substr(WDA.cen.bootstrap$subsystem,1,9) != 'Transport' & WDA.cen.bootstrap$subsystem != 'Exchange/demand reaction' & WDA.cen.bootstrap$fdr < 0.05
 print(plot_DAscore(WDA.cen.bootstrap$DAscore[idaa],WDA.cen.bootstrap$subsystem[idaa],enlarge = 3,gtitle = 'Enzymatic reactions',
                    WDA.cen.bootstrap$fdr[idaa],gsize =30,gsizex = 26,gsizey = 28))
 dev.off()
-```
 
-
-<strong>png:</strong> 2
-
-
-#### 4.2.4 Figure 2E volcono plot  of secretion
-
-
-```R
 # Volcono plot of centenarians effect
 # set the base colour as 'black' 
 idaa = lmflux3.filter$subSystemes == 'Exchange/demand reaction' & rowMeans(flux3) > 0 & substr(rownames(lmflux3.filter),1,2) == 'EX' & rowMeans(flux3.log2) > log2(1e-5)
@@ -1074,16 +680,7 @@ EnhancedVolcano(res2, lab = rownames(res2),   x = 'beta.cen', pCutoff = 0.05,cut
                 subtitle = NULL,transcriptPointSize = -3.5*log10(res2$p.cen),transcriptLabSize = 3.5,boxedlabels = F,
                 y = 'p.cen',    xlim = c(-1, 1),ylim= c(0,4), xlab = "Cen effect(beta lm) ", colCustom = keyvals)
 dev.off()
-```
 
-
-<strong>png:</strong> 2
-
-
-#### 4.2.5 comparison age and cen: Figure S5
-
-
-```R
 #text = paste('r = ',signif(tcor$estimate,2),'\n','p = ',signif(tcor$p.value,2),sep = '')
 pdf("./figures/for_pub/v2/Figure_S5A.pdf",width = 5,height = 6)
 tcor = cor.test(lmflux3$beta.age, lmflux3$beta.cen)
@@ -1093,32 +690,7 @@ ggplot(,aes(lmflux3$beta.age, lmflux3$beta.cen))+lghplot.addthemeA()+xlab('Beta 
 annotate(geom="text", x=0, y=1.5, label=text,color="darkblue",size = 8)+xlim(-0.1,0.1) + ylim(-2,2)+
 geom_smooth(method = 'lm')+ylab('Beta Cen')+ ggtitle('Cen effect Vs Age effect')
 dev.off()
-```
 
-
-    
-    	Pearson's product-moment correlation
-    
-    data:  lmflux3$beta.age and lmflux3$beta.cen
-    t = -9.4281, df = 3740, p-value < 2.2e-16
-    alternative hypothesis: true correlation is not equal to 0
-    95 percent confidence interval:
-     -0.1835122 -0.1209142
-    sample estimates:
-          cor 
-    -0.152366 
-    
-
-
-    `geom_smooth()` using formula 'y ~ x'
-    
-
-
-<strong>png:</strong> 2
-
-
-
-```R
 # Overlap
 require(VennDiagram)
 Aging_up = rownames(lmflux3)[lmflux3$beta.age > 0 & lmflux3$p.age < 0.05]
@@ -1130,27 +702,7 @@ venn.diagram(list(Aging_up=Aging_up,Aging_down = Aging_down,CEN_up = CEN_up,CEN_
              fill = c("cornflowerblue", "green", "yellow", "darkorchid1"),
              alpha=c(0.5,0.5,0.5,0.5), cex=2, cat.fontface=4, cat.cex = 1.3,margin = 0.05,
              filename="./figures/for_pub/v2/Figure_S5B.tiff")
-```
 
-    Loading required package: VennDiagram
-    Loading required package: futile.logger
-    
-    Attaching package: 'VennDiagram'
-    
-    The following object is masked from 'package:car':
-    
-        ellipse
-    
-    
-
-
-1
-
-
-#### 4.2.6 OP  complexes Figure S6
-
-
-```R
 # Oxidative phosphorylation complexes
 lmflux3$ID = rownames(lmflux3)
 ids = c('NADH2_u10mi','FADH2ETC','CYOR_u10mi','CYOOm3i','ATPS4mi')
@@ -1174,14 +726,7 @@ print(plot_DAscore(bx.cen$beta.cen,bx.cen$names,bx.cen$p.cen,xlabel = 'Beta.cen'
                    gsize = 22,gsizex = 22,gsizey = 22,
                    gtitle = 'OP complexes',lengend.position = 'right'))
 dev.off()
-```
 
-
-<strong>png:</strong> 2
-
-
-
-```R
 # ATP production
 pdf("./figures/for_pub/v2/Figure S6B.pdf",width = 5,height = 6)
 text = paste('p = ',signif(lmflux3.filter['DM_atp_c_',]$p.cen,2),'\n','beta = ',signif(lmflux3.filter['DM_atp_c_',]$beta.cen,2),sep = '')
@@ -1191,43 +736,12 @@ lghplot.addthemeA()+ xlab('') + ylab('Log2(mmol/min/L)') + ggtitle('ATP producti
 annotate(geom="text", x='F1SP', y=3.8, label=text,color="darkblue",size = 8)+ylim(0,4)
 print(lghplot.boxplot(p))
 dev.off()
-```
 
-
-<strong>png:</strong> 2
-
-
-#### 4.2.7 comparison F1 and F1SP Figure S9A_B
-
-
-```R
 DEflux.f1vsf1sp = DEGenes.simplified(flux3.log2,catagory = clin$Class == 'F1',subset = clin$Class == 'F1' | clin$Class == 'F1SP')
-```
 
-
-```R
 dim(lmflux3)
 dim(DEflux.f1vsf1sp)
-```
 
-
-<ol class=list-inline>
-	<li>3742</li>
-	<li>17</li>
-</ol>
-
-
-
-
-<ol class=list-inline>
-	<li>3742</li>
-	<li>7</li>
-</ol>
-
-
-
-
-```R
 pdf("./figures/for_pub/v2/Figure S9A.pdf",width = 6,height = 6)
 tcor = cor.test(lmflux3$beta.cen,DEflux.f1vsf1sp$log2FC)
 text = paste('r = ',signif(tcor$estimate,2),'\n','p = ',signif(tcor$p.value,2),sep = '')
@@ -1236,32 +750,7 @@ ggplot(,aes(lmflux3$beta.cen,DEflux.f1vsf1sp$log2FC))+lghplot.addthemeA()+geom_p
 annotate(geom="text", x=-0.5, y=0.8, label=text,color="darkblue",size = 8)+xlim(-1,1) + ylim(-1,1)+
 geom_smooth(method = 'lm')+xlab('Beta Cen')+ ylab('F1 vs F1SP log2FC')+ggtitle('Beta Cen Vs F1s log2FC')
 dev.off()
-```
 
-
-    
-    	Pearson's product-moment correlation
-    
-    data:  lmflux3$beta.cen and DEflux.f1vsf1sp$log2FC
-    t = 30.335, df = 3740, p-value < 2.2e-16
-    alternative hypothesis: true correlation is not equal to 0
-    95 percent confidence interval:
-     0.4182787 0.4697194
-    sample estimates:
-          cor 
-    0.4443653 
-    
-
-
-    `geom_smooth()` using formula 'y ~ x'
-    
-
-
-<strong>png:</strong> 2
-
-
-
-```R
 idx1 = lmflux3$beta.cen > 0 &  lmflux3$p.cen < 0.05 & lmflux3$subSystemes == 'Oxidative phosphorylation'
 idx2 = lmflux3$beta.cen > 0 &  lmflux3$p.cen < 0.05 & lmflux3$subSystemes == 'Fatty acid beta oxidation'
 idx3 = lmflux3$beta.cen > 0 &  lmflux3$p.cen < 0.05 & lmflux3$subSystemes == 'Transport, peroxisomal'
@@ -1295,56 +784,25 @@ dev.off()
 
 
 
-```
 
-
-27
-
-
-
-19
-
-
-
-<strong>png:</strong> 2
-
-
-### 4.3 Draw Figure 2G glycolysis-TCA-FAO
-
-
-```R
 #writetxt(lmflux3[,c('ID','beta.cen')],'./metabolic_modeling_centenarians/Hainan_CMWN_Flux3_lm_result_20191112_for_Escher.txt',sep = ',',row.names= F, col.names = F)
-```
 
-
-```R
 # Figure 2G
 #  draw Figures in EScher:   https://escher.github.io
 #  step 1: open https://escher.github.io and select map "Glycolysis TCA PPP " with the Model "none"
 #  step 2: uplaod Recon3 model of "Recon3v1_for_Escher.json" in "metabolic_modeling_centenarians" subdir
 #  step 3:  upload Reaction fluxes data of "Hainan_CMWN_Flux3_lm_result_20191112_for_Escher.txt" in "metabolic_modeling_centenarians" subdir
 #  step 4: draw Figure 2G  in escher.
-```
 
-### 4.4 gene expr in lipid metabolism: Figure S8
-
-
-```R
 expr = as.matrix(file2frame('./metabolic_modeling_centenarians/GPMM_for_CEN/data/cen_fpkm_counts_cds_cmwn_combat_20191112.txt',row.names = 1))
 expr = log2(expr[,colnames(flux3)]+1)
-```
 
-
-```R
 idx = flux3.annote$subSystemes == 'Fatty acid beta oxidation'
 faogenes = toupper(unique(unlist(strsplit(unique(flux3.annote$genes[idx]),';'))))
 expr.fao = expr[intersect(faogenes,rownames(expr)),]
 
 
-```
 
-
-```R
 nrxns = nrow(expr.fao)
 lmfaogene = data.frame(expr = rownames(expr.fao),stringsAsFactors = F,
                     meanExpr = rowMeans(expr.fao),
@@ -1369,10 +827,7 @@ for (i in 1:nrow(expr.fao)){
 rownames(lmfaogene) = rownames(expr.fao)
 #lmfaogene = cbind(lmfaogene,flux3.annote)
 
-```
 
-
-```R
 #cen
 res2 = lmfaogene
 keyvals <- rep('gray50', nrow(res2))
@@ -1394,14 +849,7 @@ EnhancedVolcano(res2, lab = tlab,   x = 'beta.cen', pCutoff = 0.4,cutoffLineCol 
                 subtitle = NULL,transcriptPointSize = -3*log10(res2$p.cen),transcriptLabSize = 6,boxedlabels = F,
                 y = 'p.cen',  xlab = "Cen effect(beta lm)", colCustom = keyvals)
 dev.off()
-```
 
-
-<strong>png:</strong> 2
-
-
-
-```R
 #age
 res2 = lmfaogene
 keyvals <- rep('gray50', nrow(res2))
@@ -1423,18 +871,7 @@ EnhancedVolcano(res2, lab = tlab,   x = 'beta.age', pCutoff = 0.4,cutoffLineCol 
                 subtitle = NULL,transcriptPointSize = -3*log10(res2$p.age),transcriptLabSize = 6,boxedlabels = F,
                 y = 'p.age',  xlab = "Age effect(beta lm)", colCustom = keyvals)
 dev.off()
-```
 
-
-<strong>png:</strong> 2
-
-
-## 5 Centenarians' plasma metabolic analysis
-
-### 5.1 Read data
-
-
-```R
 met = file2frame('./metabolic_modeling_centenarians/Hainan_CMWN_metabolism_addhmdb-filter0.8.txt')
 clin.met = file2frame('./metabolic_modeling_centenarians/Hainan_CMWN_Clinical_full.txt',row.names = 1)
 rownames(met) = paste0('Met_',1:nrow(met))
@@ -1444,25 +881,9 @@ met.expr = log2(met.expr)
 list[IA,IB] = ismember(colnames(met.expr),rownames(clin.met))
 met.expr = met.expr[,IA]
 clin.met = clin.met[IB,]
-```
 
-
-```R
 dim(met.expr)
-```
 
-
-<ol class=list-inline>
-	<li>505</li>
-	<li>159</li>
-</ol>
-
-
-
-### 5.2 Differentail DEmet
-
-
-```R
 nrxns = nrow(met.expr)
 lmMet = data.frame(meanRxns = rowMeans(met.expr),
                     beta.cen = rep(0,nrxns),p.cen = rep(1,nrxns),
@@ -1485,17 +906,11 @@ for (i in 1:nrow(met.expr)){
 rownames(lmMet) = rownames(met.expr)
 lmMet = cbind(met.header,lmMet)
 lmMet$ID = rownames(lmMet)
-```
 
-
-```R
 idaa = lmMet$p.cen < 0.05 & lmMet$p.age < 0.05 & lmMet$beta.cen * lmMet$beta.age > 0
 lmMet.filter = lmMet
 lmMet.filter$p.cen[idaa] =1
-```
 
-
-```R
 # bootstrap without replacement for lmMet
 # two linear model random
 # For centenarian effect:   flux ~ cen + sex     subset: not F1
@@ -1531,27 +946,16 @@ for (k in 1:nboot){
      }
 }
 
-```
 
-
-```R
 save(list = c('lmMet','lmMet.filter','met.expr','clin.met','met.header','bootstraplmMet'),file = './metabolic_modeling_centenarians/Met_lm_bootstrp__v20211112.Rdata')
 
-```
 
-
-```R
 #save(list = c('lmMet','met.expr','clin.met','met.header','bootstraplmMet'),file = './metabolic_modeling_centenarians/Met_lm_bootstrp.Rdata')
 #load('./metabolic_modeling_centenarians/Met_lm_bootstrp.Rdata')
 #
 load('./metabolic_modeling_centenarians/Met_lm_bootstrp__v20211112.Rdata')
 #
-```
 
-### 5.3 volcono metabolites: Figure 4A
-
-
-```R
 # cen
 res2 = lmMet
 keyvals <- rep('gray50', nrow(res2))
@@ -1571,16 +975,7 @@ EnhancedVolcano(res2, lab = res2$met_name,   x = 'beta.cen', pCutoff = 0.05,cuto
                 subtitle = NULL,transcriptPointSize = -1.2*log10(res2$p.cen),transcriptLabSize = 4,boxedlabels = F,
                 y = 'p.cen',    xlim = c(-2, 4),ylim= c(0,6), xlab = "Cen effect(beta lm) ", colCustom = keyvals)
 dev.off()
-```
 
-
-<strong>png:</strong> 2
-
-
-### 5.4 FAL ratio Figure 3B
-
-
-```R
 FALclass = c('Long-chain fatty acids','Glycerophosphocholines',
             'Phosphatidic acid', 'Glycerophosphoethanolamines', 'Glycerophosphoglycerols',
             'Glycerophosphoinositols','Sphingomyelin','Fatty amides')
@@ -1604,37 +999,7 @@ ggplot(data=tdata, aes(x=regulateType, y=number, fill=metaboType))+geom_col(posi
       annotate(geom="text", x='Up regulated', y=0.35, label='39',color="darkblue",size = 15)+
       lghplot.addthemeA(legend.position = 'top',size = 22,sizex = 20, sizey = 20)
 dev.off()
-```
 
-
-67
-
-
-
-<table>
-<caption>A data.frame: 4 × 3</caption>
-<thead>
-	<tr><th scope=col>regulateType</th><th scope=col>metaboType</th><th scope=col>number</th></tr>
-	<tr><th scope=col>&lt;chr&gt;</th><th scope=col>&lt;chr&gt;</th><th scope=col>&lt;int&gt;</th></tr>
-</thead>
-<tbody>
-	<tr><td>Up regulated  </td><td>FAL    </td><td>14</td></tr>
-	<tr><td>Up regulated  </td><td>non_FAL</td><td>39</td></tr>
-	<tr><td>Down regulated</td><td>FAL    </td><td>67</td></tr>
-	<tr><td>Down regulated</td><td>non_FAL</td><td>14</td></tr>
-</tbody>
-</table>
-
-
-
-
-<strong>png:</strong> 2
-
-
-### 5.5 DAscore analysis Figure 4C
-
-
-```R
 pdf('./figures/for_pub/v2/Figure 4C.pdf',width = 13,height = 10)
 lmMet$log2FC = lmMet$beta.cen
 lmMet$Pvalue = lmMet$p.cen
@@ -1645,16 +1010,7 @@ DAscoreMet.FAL = DAscoreMet[ids,]
 plot_DAscore(DAscoreMet.FAL$DAscore,subsystem = DAscoreMet.FAL$subsystem,fdr = DAscoreMet.FAL$fdr,enlarge = 2.5,gtitle = 'Metabolite class',
             gsize = 28,gsizex = 22,gsizey = 24)
 dev.off()
-```
 
-
-<strong>png:</strong> 2
-
-
-###  5.6 lipide changes in Cen Figure 4D
-
-
-```R
 # lipid data
 lipidtype = c('PA','PC','PE','SM','PI')
 mtype = substr(lmMet.filter$met_name,1,2)
@@ -1703,24 +1059,7 @@ ggplot(tgc1, aes(x=met_name, y=log2fc)) +
 lghplot.addtheme(hjust = F,size =12)+ xlab("") +  labs(y=expression(Log[2]("Fold change"))) +scale_fill_manual(values=c('darkblue','Brown'))
 dev.off()
 
-```
 
-
-<ol class=list-inline>
-	<li>75</li>
-	<li>159</li>
-</ol>
-
-
-
-
-<strong>png:</strong> 2
-
-
-### 5.7  Free fatty acid boxplot: Figure 4E and 4F
-
-
-```R
 pdf('./figures/for_pub/v2/Figure 4E.pdf')
 id = lmMet$met_name == 'trans-Vaccenic acid' & lmMet$score > 0.8
 ida = clin.met$Class != 'gea'
@@ -1735,18 +1074,7 @@ p = ggplot(,aes(x = clin.met$Class[ida],y = met.expr[id,ida],color = clin.met$Cl
 lghplot.addthemeA(sizex = 24,sizey = 22,size = 22) + labs(y=expression(Log[2]("Peak Area")))  + xlab('')+labs(title = "Palmitic acid")
 print(lghplot.boxplot(p))
 dev.off()
-```
 
-
-<strong>png:</strong> 2
-
-
-
-<strong>png:</strong> 2
-
-
-
-```R
 #pvalue
 id = lmMet$met_name == 'trans-Vaccenic acid' & lmMet$score > 0.8
 ida = clin.met$Class != 'F1'
@@ -1765,78 +1093,10 @@ t.test(met.expr[id,ida]~clin.met$Class[ida])
 id = lmMet$met_name == 'Palmitic acid' & lmMet$score > 0.8
 ida = clin.met$Class != 'C'
 t.test(met.expr[id,ida]~clin.met$Class[ida])
-```
 
-
-    
-    	Welch Two Sample t-test
-    
-    data:  met.expr[id, ida] by clin.met$Class[ida]
-    t = -3.2296, df = 85.545, p-value = 0.001759
-    alternative hypothesis: true difference in means is not equal to 0
-    95 percent confidence interval:
-     -0.6134908 -0.1459799
-    sample estimates:
-       mean in group C mean in group F1SP 
-              21.89379           22.27352 
-    
-
-
-
-    
-    	Welch Two Sample t-test
-    
-    data:  met.expr[id, ida] by clin.met$Class[ida]
-    t = -2.9925, df = 80.099, p-value = 0.003677
-    alternative hypothesis: true difference in means is not equal to 0
-    95 percent confidence interval:
-     -0.6110256 -0.1229410
-    sample estimates:
-      mean in group F1 mean in group F1SP 
-              21.90654           22.27352 
-    
-
-
-
-    
-    	Welch Two Sample t-test
-    
-    data:  met.expr[id, ida] by clin.met$Class[ida]
-    t = -3.6853, df = 88.115, p-value = 0.000394
-    alternative hypothesis: true difference in means is not equal to 0
-    95 percent confidence interval:
-     -0.6586044 -0.1971464
-    sample estimates:
-       mean in group C mean in group F1SP 
-              22.29181           22.71969 
-    
-
-
-
-    
-    	Welch Two Sample t-test
-    
-    data:  met.expr[id, ida] by clin.met$Class[ida]
-    t = -1.9819, df = 82.338, p-value = 0.05083
-    alternative hypothesis: true difference in means is not equal to 0
-    95 percent confidence interval:
-     -0.4971009211  0.0009143377
-    sample estimates:
-      mean in group F1 mean in group F1SP 
-              22.47160           22.71969 
-    
-
-
-### 5.8 comparison F1 vs F1SP: Figure S9C
-
-
-```R
 DEmet.f1vsf1sp = DEGenes.simplified(met.expr,catagory = clin.met$Class == 'F1',subset = clin.met$Class == 'F1SP' | clin.met$Class == 'F1')
 DEmet.f1vsf1sp = cbind(lmMet[,1:17],DEmet.f1vsf1sp)
-```
 
-
-```R
 FALclass = c('Long-chain fatty acids','Glycerophosphocholines',
             'Phosphatidic acid', 'Glycerophosphoethanolamines', 'Glycerophosphoglycerols',
             'Glycerophosphoinositols','Sphingomyelin','Fatty amides')
@@ -1862,37 +1122,7 @@ ggplot(data=tdata, aes(x=regulateType, y=number, fill=metaboType))+geom_col(posi
 dev.off()
 
 
-```
 
-
-15
-
-
-
-<table>
-<caption>A data.frame: 4 × 3</caption>
-<thead>
-	<tr><th scope=col>regulateType</th><th scope=col>metaboType</th><th scope=col>number</th></tr>
-	<tr><th scope=col>&lt;chr&gt;</th><th scope=col>&lt;chr&gt;</th><th scope=col>&lt;int&gt;</th></tr>
-</thead>
-<tbody>
-	<tr><td>Up regulated  </td><td>FAL    </td><td> 8</td></tr>
-	<tr><td>Up regulated  </td><td>non_FAL</td><td>24</td></tr>
-	<tr><td>Down regulated</td><td>FAL    </td><td>15</td></tr>
-	<tr><td>Down regulated</td><td>non_FAL</td><td> 6</td></tr>
-</tbody>
-</table>
-
-
-
-
-<strong>png:</strong> 2
-
-
-### 5.8 clinical lipid Figure S7
-
-
-```R
 #### clin.met 
 bx = lm(clin.met$TC ~ (clin.met$Class=='C') +  (clin.met$Gender == 'Female'),subset = clin.met$Class != 'F1')
 tpval = car::Anova(bx)$`Pr(>F)`[1]
@@ -1906,13 +1136,5 @@ lghplot.addtheme()+ xlab('') + ylab('TC (umol/L)') + ggtitle('Serum total choles
 annotate(geom="text", x='C', y=9, label=text,color="darkblue",size = 12)
 print(lghplot.boxplot(p))
 dev.off()
-```
 
-
-<strong>png:</strong> 2
-
-
-
-```R
 graphics.off()
-```
