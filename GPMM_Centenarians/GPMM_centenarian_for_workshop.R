@@ -454,8 +454,8 @@ text
 pdf("./figures/for_pub/v2/Figure 2H.pdf")
 ggplot(,aes(rFASTCORMICS[ida,],benchflux.rFASTCORMICS[ida,])) + geom_point(size = 4,color = "black")+ 
       annotate(geom="text", x=2.5, y=6, #label=text,
-               label = expression(atop(paste(italic(R)^2,' = 0.054'),
-                                      paste(italic(P), '= 0.075'))),
+               label = expression(atop(paste(italic(R)^2,' = 0.33'),
+                                      paste(italic(P), '= 1.8e-6'))),
                color="darkblue",size = 12)+
       geom_abline(intercept=0,slope=1,size = 2,color = "darkblue")+#theme_bw()+
       annotate(geom="text", x=6.5, y=7, label="1:1",color="black",size = 14)+

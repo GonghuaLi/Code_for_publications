@@ -14264,7 +14264,7 @@ a.anchor-link {
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs  ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In&nbsp;[2]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In&nbsp;[60]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
      <div class="CodeMirror cm-s-jupyter">
 <div class=" highlight hl-r"><pre><span></span><span class="nf">options</span><span class="p">(</span><span class="n">warn</span> <span class="o">=</span> <span class="m">-1</span><span class="p">)</span>    
@@ -15662,7 +15662,7 @@ sample estimates:
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In&nbsp;[23]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In&nbsp;[61]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
      <div class="CodeMirror cm-s-jupyter">
 <div class=" highlight hl-r"><pre><span></span><span class="n">ida</span> <span class="o">=</span> <span class="s">&#39;EX_lac_L(e)&#39;</span>
@@ -15674,8 +15674,8 @@ sample estimates:
 <span class="nf">pdf</span><span class="p">(</span><span class="s">&quot;./figures/for_pub/v2/Figure 2H.pdf&quot;</span><span class="p">)</span>
 <span class="nf">ggplot</span><span class="p">(,</span><span class="nf">aes</span><span class="p">(</span><span class="n">rFASTCORMICS</span><span class="p">[</span><span class="n">ida</span><span class="p">,],</span><span class="n">benchflux.rFASTCORMICS</span><span class="p">[</span><span class="n">ida</span><span class="p">,]))</span> <span class="o">+</span> <span class="nf">geom_point</span><span class="p">(</span><span class="n">size</span> <span class="o">=</span> <span class="m">4</span><span class="p">,</span><span class="n">color</span> <span class="o">=</span> <span class="s">&quot;black&quot;</span><span class="p">)</span><span class="o">+</span> 
       <span class="nf">annotate</span><span class="p">(</span><span class="n">geom</span><span class="o">=</span><span class="s">&quot;text&quot;</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="m">2.5</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="m">6</span><span class="p">,</span> <span class="c1">#label=text,</span>
-               <span class="n">label</span> <span class="o">=</span> <span class="nf">expression</span><span class="p">(</span><span class="nf">atop</span><span class="p">(</span><span class="nf">paste</span><span class="p">(</span><span class="nf">italic</span><span class="p">(</span><span class="n">R</span><span class="p">)</span><span class="o">^</span><span class="m">2</span><span class="p">,</span><span class="s">&#39; = 0.054&#39;</span><span class="p">),</span>
-                                      <span class="nf">paste</span><span class="p">(</span><span class="nf">italic</span><span class="p">(</span><span class="n">P</span><span class="p">),</span> <span class="s">&#39;= 0.075&#39;</span><span class="p">))),</span>
+               <span class="n">label</span> <span class="o">=</span> <span class="nf">expression</span><span class="p">(</span><span class="nf">atop</span><span class="p">(</span><span class="nf">paste</span><span class="p">(</span><span class="nf">italic</span><span class="p">(</span><span class="n">R</span><span class="p">)</span><span class="o">^</span><span class="m">2</span><span class="p">,</span><span class="s">&#39; = 0.33&#39;</span><span class="p">),</span>
+                                      <span class="nf">paste</span><span class="p">(</span><span class="nf">italic</span><span class="p">(</span><span class="n">P</span><span class="p">),</span> <span class="s">&#39;= 1.8e-6&#39;</span><span class="p">))),</span>
                <span class="n">color</span><span class="o">=</span><span class="s">&quot;darkblue&quot;</span><span class="p">,</span><span class="n">size</span> <span class="o">=</span> <span class="m">12</span><span class="p">)</span><span class="o">+</span>
       <span class="nf">geom_abline</span><span class="p">(</span><span class="n">intercept</span><span class="o">=</span><span class="m">0</span><span class="p">,</span><span class="n">slope</span><span class="o">=</span><span class="m">1</span><span class="p">,</span><span class="n">size</span> <span class="o">=</span> <span class="m">2</span><span class="p">,</span><span class="n">color</span> <span class="o">=</span> <span class="s">&quot;darkblue&quot;</span><span class="p">)</span><span class="o">+</span><span class="c1">#theme_bw()+</span>
       <span class="nf">annotate</span><span class="p">(</span><span class="n">geom</span><span class="o">=</span><span class="s">&quot;text&quot;</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="m">6.5</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="m">7</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s">&quot;1:1&quot;</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="s">&quot;black&quot;</span><span class="p">,</span><span class="n">size</span> <span class="o">=</span> <span class="m">14</span><span class="p">)</span><span class="o">+</span>
