@@ -7,4 +7,4 @@ All the metabolic modeling, flux analysis and visualization, the metabolic pathw
 
 Please following the: ***"Analyze_cell_senescence_vmax_v20240102v1.Rmd"*** to reproduce the all results in the manuscript.
 
-Optimal: you could use ***"run_one_line_flux_analysis_vmax_v20231207v1.Rmd"*** to reproduce the genome-wide metabolic modeling results, which needs rGPMM platform
+Optional: you could use ***"run_one_line_flux_analysis_vmax_v20231207v1.Rmd"*** to reproduce the genome-wide metabolic modeling results, which needs rGPMM platform
