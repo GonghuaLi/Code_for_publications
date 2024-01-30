@@ -1,0 +1,387 @@
+---
+title: "Run cell senescence vmax"
+author: "Gong-Hua Li"
+date: "2023-12-07"
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    toc: yes
+    toc_float: yes
+    number_sections: yes
+---
+
+# 1. setwd and env
+
+```{r}
+options(warn = -1)
+library(pheatmap)
+library(rGPMM)
+library(sybil)
+library(ggsci)
+library(ggplot2)
+library(GEOquery)
+library(dplyr)
+library(data.table)
+library(EnhancedVolcano)
+#run
+# nohup R -e "rmarkdown::render('run_cell_senescence_vmax_v20231207.Rmd',output_file='run_cell_senescence_vmax_v20231207.html')"  >log_run_cell_senescence_vmax_v20231207.txt 2>&1 &
+```
+
+```{r setup, include=FALSE}
+#knitr::opts_knit$set(root.dir = 'E:/iHuman/projects/Cell_line_aging')
+knitr::opts_knit$set(root.dir = '/home/ligh/projects/X/projects/Cell_aging') # in linux
+knitr::opts_chunk$set(echo = TRUE,warning = FALSE, message = FALSE)
+SYBIL_SETTINGS("SOLVER", "cplexAPI")
+```
+
+```{r}
+geneheader = file2frame('./data/Homo_sapiens.GRCh38.99.ensemble_symbol_biotype.txt')
+rownames(geneheader) = geneheader$gene_id
+
+prepross_GPMM <- function(flux3,clin){
+  #flux3 = outlist$fluxes_by_Vmax_cor
+  flux3.annote = Recon3.annote
+  idxx = rowMeans(abs(flux3))> 1e-6 & rowSums(abs(flux3)>0) > 0.1*ncol(flux3)
+
+  flux3 = flux3[idxx,]
+  flux3.abs = fillgaps_rowMin(abs(flux3))
+
+  idbb = CVs(flux3.abs) > 1e-3
+  flux3.abs = flux3.abs[idbb,]  
+  flux3 = flux3[idbb,]  
+  #remove invalid mcmc model
+  idyy = flux3.abs['biomass_reaction',] > 1e-9 
+  flux3.abs = flux3.abs[,idyy]
+  flux3 = flux3[,idyy]
+
+  flux3.log2= as.matrix(log2(flux3.abs+ 1e-6))
+  flux3.annote = flux3.annote[rownames(flux3),]
+  clin.v = clin[colnames(flux3),]
+  out = list()
+  out[['flux3']] = flux3
+  out[['flux3.log2']] = flux3.log2
+  out[['flux3.annote']] = flux3.annote
+  out[['clin.v']] = clin.v
+  return(out)
+}
+
+rpm2fpkm <- function(rpm){
+  gene.length = mRNAbase$genelength
+  idx = intersect(rownames(rpm), rownames(gene.length))
+  c = rpm[idx, ]
+  g = gene.length[idx, "cds"]
+  idaa = g > 0
+  c = c[idaa, ]
+  g = g[idaa]
+  FPKM = c/g * 1e+3
+  return(FPKM)
+}
+```
+
+# 2. Replication senescence_flux analysis
+
+```{r}
+#load data
+load('./data/cell_line_data/replication_senescence_data_v20231207.Rdata')
+```
+
+```{r Replications_senescence, fig.height = 8, fig.width = 7, fig.align = "center"}
+#oneline flux
+thenames = names(repFlux3vmax)
+for(i in 1:length(thenames)){
+  studyname = thenames[i]
+  outdir1 = paste0('./results/rep')
+  if(!dir.exists(outdir1)){
+    dir.create(outdir1)
+  }
+  gpmmresult = prepross_GPMM(repFlux3vmax[[studyname]],repClin[[studyname]])
+  outdir2 = paste0(outdir1,'/',studyname,'_vmax')
+  print(outdir2)
+  status = one_line_flux_analysis(gpmmresult$flux3,
+                fluxCase = gpmmresult$flux3.log2[,gpmmresult$clin.v$ageType == 'sen'],
+                fluxControl = gpmmresult$flux3.log2[,gpmmresult$clin.v$ageType == 'pro'],
+                flux3.annote = gpmmresult$flux3.annote,
+                outdir = outdir2)
+}
+
+```
+
+# 3. IRradiation senescence_flux analysis
+
+```{r}
+#load data
+load('./data/cell_line_data/IRradiation_senescence_data_v20231207.Rdata')
+```
+
+```{r IRradiation_senescence, fig.height = 8, fig.width = 7, fig.align = "center"}
+#oneline flux
+thenames = names(IRFlux3vmax)
+for(i in 1:length(thenames)){
+  studyname = thenames[i]
+  outdir1 = paste0('./results/IR')
+  if(!dir.exists(outdir1)){
+    dir.create(outdir1)
+  }
+  gpmmresult = prepross_GPMM(IRFlux3vmax[[studyname]],IRClin[[studyname]])
+  outdir2 = paste0(outdir1,'/',studyname,'_vmax')
+  print(outdir2)
+  status = one_line_flux_analysis(gpmmresult$flux3,
+                fluxCase = gpmmresult$flux3.log2[,gpmmresult$clin.v$ageType == 'sen'],
+                fluxControl = gpmmresult$flux3.log2[,gpmmresult$clin.v$ageType == 'pro'],
+                flux3.annote = gpmmresult$flux3.annote,
+                outdir = outdir2)
+}
+
+```
+
+# 4. ROS senescence_flux analysis
+
+```{r}
+#load data
+load('./data/cell_line_data/ROS_senescence_data_v20231207.Rdata')
+```
+
+```{r ROS_senescence, fig.height = 8, fig.width = 7, fig.align = "center"}
+#oneline flux
+thenames = names(ROSFlux3vmax)
+for(i in 1:length(thenames)){
+  studyname = thenames[i]
+  outdir1 = paste0('./results/ROS')
+  if(!dir.exists(outdir1)){
+    dir.create(outdir1)
+  }
+  gpmmresult = prepross_GPMM(ROSFlux3vmax[[studyname]],ROSClin[[studyname]])
+  outdir2 = paste0(outdir1,'/',studyname,'_vmax')
+  print(outdir2)
+  status = one_line_flux_analysis(gpmmresult$flux3,
+                fluxCase = gpmmresult$flux3.log2[,gpmmresult$clin.v$ageType == 'sen'],
+                fluxControl = gpmmresult$flux3.log2[,gpmmresult$clin.v$ageType == 'pro'],
+                flux3.annote = gpmmresult$flux3.annote,
+                outdir = outdir2)
+}
+
+
+```
+
+# 5 Oncogene senescence_flux analysis
+
+```{r}
+load('./data/cell_line_data/Oncogene_senescence_data_v20231207.Rdata')
+```
+
+```{r Oncogene_senescence, fig.height = 8, fig.width = 7, fig.align = "center"}
+#oneline flux
+thenames = names(OncoFlux3vmax)
+for(i in 1:length(thenames)){
+  studyname = thenames[i]
+  outdir1 = paste0('./results/Onco')
+  if(!dir.exists(outdir1)){
+    dir.create(outdir1)
+  }
+  gpmmresult = prepross_GPMM(OncoFlux3vmax[[studyname]],OncoClin[[studyname]])
+  outdir2 = paste0(outdir1,'/',studyname,'_vmax')
+  print(outdir2)
+  status = one_line_flux_analysis(gpmmresult$flux3,
+                fluxCase = gpmmresult$flux3.log2[,gpmmresult$clin.v$ageType == 'sen'],
+                fluxControl = gpmmresult$flux3.log2[,gpmmresult$clin.v$ageType == 'pro'],
+                flux3.annote = gpmmresult$flux3.annote,
+                outdir = outdir2)
+}
+
+
+```
+
+# 6. Replication senescence_KO analysis
+
+```{r}
+#KO
+thenames = names(repFlux3vmax)
+for(i in 1:length(thenames)){
+  studyname = thenames[i]
+  outdir1 = paste0('./results/rep')
+  if(!dir.exists(outdir1)){
+    dir.create(outdir1)
+  }
+  gpmmresult = prepross_GPMM(repFlux3vmax[[studyname]],repClin[[studyname]])
+  outdir2 = paste0(outdir1,'/',studyname,'_vmax')
+  print(outdir2)
+  
+  expr = repExpr[[studyname]]
+  expr = expr_standardization(expr)
+  
+  DEflux = DEGenes.simplified(gpmmresult$flux3.log2,catagory = gpmmresult$clin.v$ageType == 'sen')
+  DEflux = cbind(DEflux,gpmmresult$flux3.annote)
+  
+  idx = DEflux$Pvalue < 0.05
+  DErxns = DEflux$ID[idx]
+  DEfc = DEflux$log2FC[idx]
+  
+  #key_genes
+  outdirkeygene = paste0(outdir2,'/keygenes.Rdata')
+  if(!file.exists(outdirkeygene)){
+      keygenes = predict_key_genes(expr,DErxns,DEfc,numCores = 4)   #spend minutes
+      save(list = c('keygenes'),file = outdirkeygene)
+  }
+  
+  # key metabolites
+  outdirkeymets = paste0(outdir2,'/keymetabolites.Rdata')
+  if(!file.exists(outdirkeymets)){
+      keymetabolites = predict_key_metabolites(expr,DErxns,DEfc,numCores = 4)  #spend minutes
+      save(list = c('keymetabolites'),file = outdirkeymets)
+  }
+}
+```
+
+```{r}
+#script for network run in webserver
+library(rGPMM)
+load('./data/cell_line_data/replication_senescence_data_v20231207.Rdata')
+studyname = 'BJ_GSE56293_1'
+  outdir1 = paste0('./results/rep')
+  outdir2 = paste0(outdir1,'/',studyname,'_vmax')
+  
+  expr = repExpr[[studyname]]
+  expr = expr_standardization(expr)
+  metax = file2frame('./results/rep/replication_fluxes_meta_analysis.txt')
+  idx = metax$MetaFDR < 0.05
+  DErxns = metax$ID[idx]
+  DEfc = metax$Metalog2FC[idx]
+  
+  #key_genes
+  outdirkeygene = paste0(outdir2,'/keygenes_for_figure4_network.Rdata')
+  if(!file.exists(outdirkeygene)){
+      keygenes = predict_key_genes(expr,DErxns,DEfc,rm.transport = FALSE,numCores = 16)   #spend minutes
+      save(list = c('keygenes'),file = outdirkeygene)
+  }
+  
+  # key metabolites
+  outdirkeymets = paste0(outdir2,'/keymetabolites_for_figure4_network.Rdata')
+  if(!file.exists(outdirkeymets)){
+      keymetabolites = predict_key_metabolites(expr,DErxns,DEfc,rm.transport = FALSE,numCores = 16)  #spend minutes
+      save(list = c('keymetabolites'),file = outdirkeymets)
+  }
+```
+
+# 7. IRradiation senescence_KO analysis
+
+```{r}
+#KO
+thenames = names(IRFlux3vmax)
+for(i in 1:length(thenames)){
+  studyname = thenames[i]
+  outdir1 = paste0('./results/IR')
+  if(!dir.exists(outdir1)){
+    dir.create(outdir1)
+  }
+  gpmmresult = prepross_GPMM(IRFlux3vmax[[studyname]],IRClin[[studyname]])
+  outdir2 = paste0(outdir1,'/',studyname,'_vmax')
+  print(outdir2)
+  
+  expr = IRExpr[[studyname]]
+  expr = expr_standardization(expr)
+  
+  DEflux = DEGenes.simplified(gpmmresult$flux3.log2,catagory = gpmmresult$clin.v$ageType == 'sen')
+  DEflux = cbind(DEflux,gpmmresult$flux3.annote)
+  
+  idx = DEflux$Pvalue < 0.05
+  DErxns = DEflux$ID[idx]
+  DEfc = DEflux$log2FC[idx]
+  
+  #key_genes
+  outdirkeygene = paste0(outdir2,'/keygenes.Rdata')
+  if(!file.exists(outdirkeygene)){
+      keygenes = predict_key_genes(expr,DErxns,DEfc,numCores = 4)   #spend minutes
+      save(list = c('keygenes'),file = outdirkeygene)
+  }
+  
+  # key metabolites
+  outdirkeymets = paste0(outdir2,'/keymetabolites.Rdata')
+  if(!file.exists(outdirkeymets)){
+      keymetabolites = predict_key_metabolites(expr,DErxns,DEfc,numCores = 4)  #spend minutes
+      save(list = c('keymetabolites'),file = outdirkeymets)
+  }
+}
+```
+
+# 8. ROS senescence_KO analysis
+
+```{r}
+#KO
+thenames = names(ROSFlux3vmax)
+for(i in 1:length(thenames)){
+  studyname = thenames[i]
+  outdir1 = paste0('./results/ROS')
+  if(!dir.exists(outdir1)){
+    dir.create(outdir1)
+  }
+  gpmmresult = prepross_GPMM(ROSFlux3vmax[[studyname]],ROSClin[[studyname]])
+  outdir2 = paste0(outdir1,'/',studyname,'_vmax')
+  print(outdir2)
+  
+  expr = ROSExpr[[studyname]]
+  expr = expr_standardization(expr)
+  
+  DEflux = DEGenes.simplified(gpmmresult$flux3.log2,catagory = gpmmresult$clin.v$ageType == 'sen')
+  DEflux = cbind(DEflux,gpmmresult$flux3.annote)
+  
+  idx = DEflux$Pvalue < 0.05
+  DErxns = DEflux$ID[idx]
+  DEfc = DEflux$log2FC[idx]
+  
+  #key_genes
+  outdirkeygene = paste0(outdir2,'/keygenes.Rdata')
+  if(!file.exists(outdirkeygene)){
+      keygenes = predict_key_genes(expr,DErxns,DEfc,numCores = 4)   #spend minutes
+      save(list = c('keygenes'),file = outdirkeygene)
+  }
+  
+  # key metabolites
+  outdirkeymets = paste0(outdir2,'/keymetabolites.Rdata')
+  if(!file.exists(outdirkeymets)){
+      keymetabolites = predict_key_metabolites(expr,DErxns,DEfc,numCores = 4)  #spend minutes
+      save(list = c('keymetabolites'),file = outdirkeymets)
+  }
+}
+```
+
+# 9. Oncogene senescence_KO analysis
+
+```{r}
+#ko
+thenames = names(OncoFlux3vmax)
+for(i in 1:length(thenames)){
+  studyname = thenames[i]
+  outdir1 = paste0('./results/Onco')
+  if(!dir.exists(outdir1)){
+    dir.create(outdir1)
+  }
+  gpmmresult = prepross_GPMM(OncoFlux3vmax[[studyname]],OncoClin[[studyname]])
+  outdir2 = paste0(outdir1,'/',studyname,'_vmax')
+  print(outdir2)
+  
+  expr = OncoExpr[[studyname]]
+  expr = expr_standardization(expr)
+  
+  DEflux = DEGenes.simplified(gpmmresult$flux3.log2,catagory = gpmmresult$clin.v$ageType == 'sen')
+  DEflux = cbind(DEflux,gpmmresult$flux3.annote)
+  
+  idx = DEflux$Pvalue < 0.05
+  DErxns = DEflux$ID[idx]
+  DEfc = DEflux$log2FC[idx]
+  
+  #key_genes
+  outdirkeygene = paste0(outdir2,'/keygenes.Rdata')
+  if(!file.exists(outdirkeygene)){
+      keygenes = predict_key_genes(expr,DErxns,DEfc,numCores = 4)   #spend minutes
+      save(list = c('keygenes'),file = outdirkeygene)
+  }
+  
+  # key metabolites
+  outdirkeymets = paste0(outdir2,'/keymetabolites.Rdata')
+  if(!file.exists(outdirkeymets)){
+      keymetabolites = predict_key_metabolites(expr,DErxns,DEfc,numCores = 4)  #spend minutes
+      save(list = c('keymetabolites'),file = outdirkeymets)
+  }
+}
+```
