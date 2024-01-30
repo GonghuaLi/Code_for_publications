@@ -5,4 +5,4 @@ Note:
 Our recently developed metabolic modeling methods including FastMM, GPMM, and vhMM have been optimized and integrated into the single cell precision metabolic modeling R platform rGPMM (version 1.0.0) (https://github.com/GonghuaLi/rGPMM, will be public soon). 
 All the metabolic modeling, flux analysis and visualization, the metabolic pathway analysis, all-against-all knock out analysis, and key gene and metabolite identification were performed in rGPMM platform.
 
-Please following the: ***"Analyze_cell_senescence_vmax_v20240102.Rmd"*** to reproduce the results.
+Please following the: ***"Analyze_cell_senescence_vmax_v20240102v1.Rmd"*** to reproduce the results.
