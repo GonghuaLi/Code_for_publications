@@ -1,2 +1,2 @@
 The metabolic modeling results from rGPMM package
-Please uncompress these four zip files
+Please uncompress these four zip files, or you can perform the genome-wide precision metabolic modeling yourself by using "../run_cell_senescence_vmax_v20231207v1.Rmd"
