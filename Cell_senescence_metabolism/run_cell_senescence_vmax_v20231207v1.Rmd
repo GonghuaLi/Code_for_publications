@@ -17,7 +17,6 @@ output:
 options(warn = -1)
 library(pheatmap)
 library(rGPMM)
-library(sybil)
 library(ggsci)
 library(ggplot2)
 library(GEOquery)
@@ -32,7 +31,7 @@ library(EnhancedVolcano)
 #knitr::opts_knit$set(root.dir = 'E:/iHuman/projects/Cell_line_aging')
 knitr::opts_knit$set(root.dir = '/home/ligh/projects/X/projects/Cell_aging') # in linux
 knitr::opts_chunk$set(echo = TRUE,warning = FALSE, message = FALSE)
-SYBIL_SETTINGS("SOLVER", "cplexAPI")
+changeSolver('cplex')
 ```
 
 ```{r}
