@@ -1,0 +1,704 @@
+---
+title: "Untitled"
+output: html_document
+date: "2024-03-28"
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 数据说明
+
+#-force：计算的force值，所有pairs
+
+#-output: mRNA\\protein\\force 回归分析的结果---模型结果
+
+#-tmp.3d : 4821个基因的表达、FC、force、G、passage
+
+## R package
+
+```{r}
+library(plot3D)
+library("plot3Drgl")
+library(tidyverse)
+library(gghighlight)
+library(latticeExtra)  #双Y轴
+library(patchwork)  #排列
+
+library(ggvenn) 
+library(cowplot) 
+
+```
+
+### Fig. 1C
+
+```{r}
+figdata <- tmp.3d %>% 
+  group_by(condition) %>% 
+  summarise(sum = sum(G,na.rm = T)) %>% 
+  filter(sum != 0)
+
+p1 <- ggplot(figdata, aes(x = condition, y = log10(sum), group = 1, color=condition)) +
+  geom_line(size= 2, color="black", linetype=1)+
+  geom_point(size=6, shape=19) +
+  theme_bw() + 
+  theme(legend.position='none') +
+  xlab('Conditions') + 
+  ylab('Total G') +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1))+
+  lghplot.addtheme()
+p1
+```
+
+### Fig. 1D
+
+```{r}
+#导入
+figdata.v <- read.csv("tmp.3d.G and PDT.csv")
+figdata.v
+figdata.v <- figdata.v[-1,]
+#
+
+#散点图+拟合曲线
+cor.test(figdata.v$DPT, figdata.v$logSum, method = "pearson")
+
+p2 <- ggplot(figdata.v, aes(x =DPT , y =  logSum)) +
+  geom_point(size  = 4, aes(color=condition))+
+  geom_smooth(method = 'lm',se = T,fill = "yellow", color = "black",linetype=2)+
+  theme_bw() +
+  ylab("Log10(totleG)") +
+  xlab("PDT")+
+  ggtitle("r=0.78, p-value = 0.02168") +
+  theme(plot.title = element_text(hjust = 0.5))+
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1))+
+  lghplot.addtheme()
+
+p2
+```
+
+### Fig. 2A
+
+```{r}
+figdata.v3 <- output %>%
+  filter(fdr.age.Force < 0.05) %>%
+  mutate(label = ifelse(fdr.age.Force < 0.03, gene.Force,""))
+
+
+with(figdata.v3,
+  scatter3D(beta.age,
+            beta.age.cpm, 
+            -log10(fdr.age.Force),
+            colvar = fdr.age.Force,
+            col = ramp.col(col = c("#FF0000", "#FFFF00"), n=length(fdr.age.Force),alpha = 1),
+            #col = ramp.col(col = c("blue", "red"), n=length(fdr.age.Force),alpha = 1), #点的颜色,不能是factor
+            #colvar = beta.age.Force >0, 
+            #col = ramp.col(col = c("blue", "Red"), n = 2, alpha = 0.5), F
+            colkey = list( length = 0.5), # 列表传参,设定图例
+            theta = -30, phi = 15, d=2, 
+            xlab = "beta: protein", 
+            ylab = "beta: mRNA", 
+            zlab = "-Log10(FDR)",
+            main = "3D-fdr", 
+            pch =18,cex = 2, #点的形状
+            ticktype = "detailed",
+            bty = "b2" 
+            ))
+
+## 加注释
+with(figdata.v3,
+  text3D(beta.age,
+         beta.age.cpm, 
+         -log10(fdr.age.Force),
+         add = T,
+         #colvar = beta.age.Force >0, 
+         #col = ramp.col(col = c("blue", "Red"), n = 2, alpha = 0.5), 
+         theta = -30, phi = 15, d=2, #控制三维图的角度
+         #pch =18, #点的形状
+         #cex = 2,  #点放大多少倍
+         #xlab = "beta.age.pro", 
+         #ylab = "beta.age.cpm", 
+         #zlab = "-log10(p.age.Force)",
+         ticktype = "detailed", #坐标轴的刻度
+         bty = "b2",
+         labels = label, font = 0.8,col.panel = NA,
+         colkey = list(plot = FALSE)
+  ))
+
+
+
+rm(figdata.v3)
+```
+
+### Fig. 2B
+
+```{r}
+figdata <- output %>%
+  filter(fdr.age.Force < 0.05)  %>%
+  mutate(label = ifelse(fdr.age.Force < 0.03, gene.Force,""),
+         ftype = ifelse(beta.age.Force > 0, "up","down"))
+
+## 方法1：
+with(figdata, 
+     text2D(x = beta.age, #x
+            y = beta.age.cpm, #y
+            #colvar = beta.age.Force >0, 
+            #col = ramp.col(col = c("blue", "Red"), n = 2, alpha = 0.5),
+            xlab = "beta: protein", ylab = "beta: mRNA",main = "62", 
+            labels = label, cex = 0.6, adj = 0.5, font = 1, 
+            colkey = list(length = 0.5,dist = 0)
+            #colkey = list(plot = FALSE)
+     ))
+
+with(figdata, 
+     scatter2D(x = beta.age, #x
+               y = beta.age.cpm, #y
+               #colvar = beta.age.Force >0, 
+               #col = ramp.col(col = c("blue", "Red"), n = 2, alpha = 0.6),
+               colvar = fdr.age.Force,
+               col = ramp.col(col = c("#FF0000", "#FFFF00"), n=length(fdr.age.Force),alpha = 1),
+               colkey = list(length = 0.5),
+               pch = 18,
+               cex = 2,
+               add = T,
+               xlab = "beta: protein", ylab = "beta: mRNA",main = "62"
+     ))
+
+
+```
+
+### Fig. 2C
+
+```{r}
+genename = "TGOLN2"
+
+p1 <- tmp.3d %>% filter(Genes == genename) %>%
+    ggplot(., aes(x =passage , y =  Force)) +
+  geom_point(size  = 4, aes(color=condition))+
+  geom_smooth(method = 'lm',se = T,fill = "yellow", color = "black",linetype=2)+
+  theme_bw() +
+  ylab("Force") +
+  xlab("Passage")+
+  ggtitle(genename) +
+  theme(plot.title = element_text(hjust = 0.5))+
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1))+
+  lghplot.addtheme()
+p1  
+```
+
+### Fig. 2D
+
+```{r}
+genename = "TGOLN2"
+#单个
+p1 <- tmp.3d %>% filter(Genes == genename) %>%
+    mutate(predict.P = first(log2Proteins)+log2mRNAs-first(log2mRNAs)) %>%
+    dplyr::select(log2Proteins, predict.P, condition)  %>%
+  pivot_longer(-c(condition), names_to = "group", values_to = "expression") %>%
+  ggplot(., aes(condition, expression, group = group,linetype=group)) + 
+  geom_line(aes(colour = group),size = 3) + 
+  geom_point(size=2, shape=19) + 
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1))+
+  labs(title = genename)+
+  lghplot.addtheme()+ 
+  xlab('Conditions') + 
+  ylab('Gene expression') +
+  theme(legend.position='top')
+p1  
+```
+
+### Fig. 5a
+
+```{r}
+library(EnhancedVolcano)
+
+res2 <- read.csv("kd1_trans.Count_matrix.DESeq2.normalized.rlog+logFC.csv")
+
+head(res2)
+
+EnhancedVolcano(res2, lab = rownames(res2), x = 'log2FoldChange', y = 'padj', 
+                selectLab = c('TGOLN2'), 
+                pCutoff = 0.01, FCcutoff = 1.0, pointSize = 4.0, labSize = 6.0,
+                labCol = 'black', labFace = 'bold', boxedLabels = TRUE, colAlpha = 4/5, legendPosition = 'right', 
+                legendLabSize = 14, legendIconSize = 4.0, drawConnectors = TRUE, widthConnectors = 1.0, 
+                colConnectors = 'black',
+                title = 'DEG.Kd1',border = 'full',titleLabSize = 15,subtitle=NULL)
+
+##########
+res2 <- read.csv("kd2_trans.Count_matrix.DESeq2.normalized.rlog+logFC.csv")
+
+head(res2)
+
+EnhancedVolcano(res2, lab = rownames(res2), x = 'log2FoldChange', y = 'padj', 
+                selectLab = c('TGOLN2'), 
+                pCutoff = 0.01, FCcutoff = 1.0, pointSize = 4.0, labSize = 6.0,
+                labCol = 'black', labFace = 'bold', boxedLabels = TRUE, colAlpha = 4/5, legendPosition = 'right', 
+                legendLabSize = 14, legendIconSize = 4.0, drawConnectors = TRUE, widthConnectors = 1.0, 
+                colConnectors = 'black',
+                title = 'DEG.Kd2',border = 'full',titleLabSize = 15,subtitle=NULL)
+
+
+##########
+res2 <- read.csv("kd3_trans.Count_matrix.DESeq2.normalized.rlog+logFC.csv")
+
+head(res2)
+
+EnhancedVolcano(res2, lab = rownames(res2), x = 'log2FoldChange', y = 'padj', 
+                selectLab = c('TGOLN2'), 
+                pCutoff = 0.01, FCcutoff = 1.0, pointSize = 4.0, labSize = 6.0,
+                labCol = 'black', labFace = 'bold', boxedLabels = TRUE, colAlpha = 4/5, legendPosition = 'right', 
+                legendLabSize = 14, legendIconSize = 4.0, drawConnectors = TRUE, widthConnectors = 1.0, 
+                colConnectors = 'black',
+                title = 'DEG.Kd3',border = 'full',titleLabSize = 15,subtitle=NULL)
+```
+
+### Fig. 5b
+
+```{r}
+kd1.v1 <- read.csv("./DEG-deseq2-KD-li/DEg_ko1_DEseq2.csv") %>% 
+  filter(abs(log2FoldChange)>1, padj<0.05)
+kd2.v1 <- read.csv("./DEG-deseq2-KD-li/DEg_ko2_DEseq2.csv")%>% 
+  filter(abs(log2FoldChange)>1, padj<0.05)
+kd3.v1 <- read.csv("./DEG-deseq2-KD-li/DEg_ko3_DEseq2.csv")%>% 
+  filter(abs(log2FoldChange)>1, padj<0.05)
+
+
+###data-
+kd1.v1.up <- subset(kd1.v1, log2FoldChange > 0)
+kd1.v1.dn <- subset(kd1.v1, log2FoldChange < 0)
+
+kd2.v1.up <- subset(kd2.v1, log2FoldChange > 0)
+kd2.v1.dn <- subset(kd2.v1, log2FoldChange < 0)
+
+kd3.v1.up <- subset(kd3.v1, log2FoldChange > 0)
+kd3.v1.dn <- subset(kd3.v1, log2FoldChange < 0)
+
+###
+##### 2 ggvenn ############
+library(ggvenn) 
+library(cowplot)   #拼图
+
+### 
+A <- kd1.v1.dn$gene_name
+B <- kd2.v1.dn$gene_name
+C <- kd3.v1.dn$gene_name
+
+venn_list_dn <- list("TGOLN2-KD"=A, 
+                  "IMPAD1-KD"=B,
+                  "TOMM20-KD"=C)
+p1 <- ggvenn(venn_list_dn, 
+       show_percentage = F,
+       stroke_color = "white",
+       fill_color = c("#ffb2b2","#b2e7cb","#b2d4ec"),
+       set_name_color = c("#ff0000","#4a9b83","#1d6295"),
+       set_name_size = 6)
+p1
+
+### A准备基因集 2-4组
+A <- kd1.v1.up$gene_name
+B <- kd2.v1.up$gene_name
+C <- kd3.v1.up$gene_name
+venn_list_up <- list("TGOLN2-KD"=A, 
+                     "IMPAD1-KD"=B,
+                     "TOMM20-KD"=C)
+
+p2 <- ggvenn(venn_list_up, 
+             show_percentage = F,
+             stroke_color = "white",
+             fill_color = c("#ffb2b2","#b2e7cb","#b2d4ec"),
+             set_name_color = c("#ff0000","#4a9b83","#1d6295"),
+             set_name_size = 6)
+p2
+
+plot_grid(p1,p2,ncol=2,nrow = 1,labels = c("b",""))
+```
+
+### Fig. 5e
+
+```{r}
+exp.all <- read.csv("kdALL_trans.Count_matrix.DESeq2.normalized.rlog.csv",row.names = 1)
+
+head(exp.all)
+
+  uniongenes <- function (a,b,c){
+    out = union(a,b)
+    out = union(out,c)
+    return(out)
+  }
+
+degs <- uniongenes(kd1.v1$gene_name,kd2.v1$gene_name,kd3.v1$gene_name)
+
+exp.deg <- exp.all[degs,]
+
+library(pheatmap)
+  p <- pheatmap(exp.deg,scale="row",
+                #kmeans_k= 4,
+                color = colorRampPalette(c("blue", "white", "red"))(100),
+                #border="white",  # 设置边框为白色
+                cluster_cols = T, # 去掉横向、纵向聚类
+                cluster_rows = T,
+                clustering_method="ward.D", # 设置聚类方法"ward.D", “complete”, “mcquitty”, “ward.D2”
+                cutree_rows = 6,
+                cutree_cols = 4,
+                show_rownames = F, #显示横、纵坐标id
+                show_colnames = T,
+                legend = T, # 显示图例
+                fontsize_row = 12, # 分别设置横向和纵向字体大小
+                fontsize_col = 16,
+                angle_col = 45)  
+```
+
+### Fig. S1a
+
+```{r}
+##########转录组内相关分析###
+library(ggstatsplot)
+library(ggcorrplot)
+library(ggplot2)
+library(psych)
+library(corrplot)
+
+mrna.exp <-  read.csv("../data/0-mRNA-HDF13-37_trans.Count_matrix.DESeq2.normalized.rlog.csv")
+data <- mrna.exp[,-1]
+
+correlation <- corr.test(data,use = "pairwise",method ="pearson")
+correlation.psy <- correlation$r
+correlation.p.psy <- correlation$p 
+
+##ggcorrplot#
+corrplot(correlation.psy,
+         method ="circle",#指定相关系数以圆的形式展示
+         type ="lower",#只展示矩阵的下半部分
+         order = "original",#指定相关系数排列方式
+         addCoef.col="grey",#设置相关系数的颜色
+         addCoefasPercent = F,#以小数点的形式表示相关系数
+         tl.pos="ld",#左边和对角线显示变量名
+         tl.cex=1.0,#变量标签名的大小
+         tl.col="black",#变量标签名的颜色
+         tl.offset=1,#文本标签和矩阵图的距离
+         tl.srt=1,#变量名标签和对角线的倾斜度
+         cl.cex=1,#x轴上相关系数值的大小
+         cl.ratio=0.15,#颜色图例和矩阵图的比例
+         cl.align.text="c",#x轴上颜色图例数字的位置
+         number.cex=0.6,#相关系数数字的大小
+         number.digits=3,#相关系数保留的小数点位数
+         )
+```
+
+### Fig. S1b
+
+```{r}
+prt <- read.csv("../data/0-protein-tansformlog2-70percent-naimputation.csv")
+data <- prt[,1:18]
+
+correlation <- corr.test(data,use = "pairwise",method ="pearson")
+correlation.psy <- correlation$r
+correlation.p.psy <- correlation$p 
+
+
+##corrplot方法-OK####
+corrplot(correlation.psy,
+         method ="circle",#指定相关系数以圆的形式展示
+         type ="lower",#只展示矩阵的下半部分
+         order = "original",#指定相关系数排列方式
+         addCoef.col="grey",#设置相关系数的颜色
+         addCoefasPercent = F,#以小数点的形式表示相关系数
+         tl.pos="ld",#左边和对角线显示变量名
+         tl.cex=1.0,#变量标签名的大小
+         tl.col="black",#变量标签名的颜色
+         tl.offset=1,#文本标签和矩阵图的距离
+         tl.srt=1,#变量名标签和对角线的倾斜度
+         cl.cex=1,#x轴上相关系数值的大小
+         cl.ratio=0.15,#颜色图例和矩阵图的比例
+         cl.align.text="c",#x轴上颜色图例数字的位置
+         number.cex=0.6,#相关系数数字的大小
+         number.digits=2,#相关系数保留的小数点位数
+)
+```
+
+### Fig. S1c
+
+```{r}
+expr.v = read.csv( "../data/1-mRNA across passage of HDF.csv", row.names = 1)
+
+head(expr.v)
+
+#将基因表达值矩阵作个转置，使行为样本，列为基因
+pca.exp <- t(expr.v)
+
+View(pca.exp)
+
+pca.dat <- PCA(pca.exp, scale.unit = TRUE, graph = FALSE)
+pca.fig <- pca.dat[["ind"]][["coord"]] 
+
+scatter3D(pca.fig[,1],
+               pca.fig[,2], 
+               pca.fig[,3],
+               colvar = as.numeric(substr(rownames(pca.fig),2,3)), 
+               col = ramp.col(col = c("blue", "red"), n = length(as.numeric(substr(rownames(pca.fig),2,3))), alpha = 0.5),
+               xlab = "Dim.1", 
+               ylab = "Dim.2", 
+               zlab = "Dim.3",
+               main = "mRNA-pca", 
+               theta = 30, phi = 15, d=2, 
+               colkey = list( length = 0.5),#控制三维图的角度
+               pch =18, #点的形状
+               cex = 3,  #点放大多少倍
+               ticktype = "detailed", #坐标轴的刻度
+               bty = "b2" )
+     
+
+text3D(pca.fig[,1],
+               pca.fig[,2], 
+               pca.fig[,3],
+            add = TRUE,
+            colvar = as.numeric(substr(rownames(pca.fig),2,3)), 
+               col = ramp.col(col = c("blue", "red"), n = length(as.numeric(substr(rownames(pca.fig),2,3))), alpha = 0.5),
+            theta = 30, phi = 15, d=2, 
+       colkey = list(plot = FALSE),
+       labels = substr(rownames(pca.fig),2,3), 
+       cex = 1, adj = 1.5)
+```
+
+### Fig. S1d
+
+```{r}
+pro.v = read.csv("../data/2-protein across passage of HDF.csv", row.names = 1)
+
+head(pro.v )
+
+#将基因表达值矩阵作个转置，使行为样本，列为基因
+pca.exp <- t(pro.v )
+
+View(pca.exp)
+
+pca.dat <- PCA(pca.exp, scale.unit = TRUE, graph = FALSE)
+pca.fig <- pca.dat[["ind"]][["coord"]] 
+
+scatter3D(pca.fig[,1],
+               pca.fig[,2], 
+               pca.fig[,3],
+               colvar = as.numeric(substr(rownames(pca.fig),2,3)), 
+               col = ramp.col(col = c("blue", "red"), n = length(as.numeric(substr(rownames(pca.fig),2,3))), alpha = 0.5),
+               xlab = "Dim.1", 
+               ylab = "Dim.2", 
+               zlab = "Dim.3",
+               main = "protein-pca", 
+               theta = 30, phi = 15, d=2, 
+               colkey = list( length = 0.5),#控制三维图的角度
+               pch =18, #点的形状
+               cex = 3,  #点放大多少倍
+               ticktype = "detailed", #坐标轴的刻度
+               bty = "b2" )
+     
+
+text3D(pca.fig[,1],
+               pca.fig[,2], 
+               pca.fig[,3],
+            add = TRUE,
+            colvar = as.numeric(substr(rownames(pca.fig),2,3)), 
+               col = ramp.col(col = c("blue", "red"), n = length(as.numeric(substr(rownames(pca.fig),2,3))), alpha = 0.5),
+            theta = 30, phi = 15, d=2, 
+       colkey = list(plot = FALSE),
+       labels = substr(rownames(pca.fig),2,3), 
+       cex = 1, adj = 1.5)
+```
+
+### Fig. S2a
+
+```{r}
+scatter3D(tmp.3d$log2Proteins, #x
+          tmp.3d$log2mRNAs, #y
+          tmp.3d$passage, #z
+          xlab = "log2Proteins",
+          ylab = "log2mRNAs",
+          zlab = "passage",
+          title = "4786 pairs",
+          theta = 30, phi = 15, d=2, #控制三维图的角度
+          col = ramp.col(col = c("blue", "red"), n=length(tmp.3d$passage),alpha = 0.5), #点的颜色,不同代数，不能是factor
+          colkey = list( length = 0.5, col.clab = "blue", dist = -0.1),
+          pch =18, #点的形状
+          cex = 1,  #点放大多少倍
+          ticktype = "detailed", #坐标轴的刻度
+          #type = "l",
+          bty = "f" #表示边框类型,f-所有panels透明
+          )
+
+```
+
+### Fig. S2b
+
+```{r}
+ggplot(tmp.3d, aes(Force, G, colour =condition)) +
+  facet_wrap(~condition) +
+  geom_point(shape=19,size=2, alpha=0.8) +
+  theme_bw() +
+  ylab("potential energy G") +
+  xlab("Force")+
+  ggtitle("G~passage") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+### Fig. S3a
+
+```{r}
+library(MASS)
+library(ggplot2)
+
+#data：output
+head(output)
+
+group <- ifelse(output$fdr.age < 0.05 & output$fdr.age.cpm < 0.05,
+                "mRNA+pro_both", 
+                ifelse(output$fdr.age < 0.05 & output$fdr.age.cpm > 0.05,
+                "mRNA_only", 
+                ifelse(output$fdr.age > 0.05 & output$fdr.age.cpm < 0.05,
+                "pro_only", NA)))
+
+output$group <- group
+
+table(output$fdr.age < 0.05 & output$fdr.age.cpm < 0.05)
+table(output$fdr.age < 0.05 & output$fdr.age.cpm > 0.05)
+table(output$fdr.age > 0.05 & output$fdr.age.cpm < 0.05)
+
+# 定义绘制坐标轴函数：
+draw_axis_line <- function(length_x, length_y, 
+                           tick_step = NULL, lab_step = NULL){
+  axis_x_begin <- -1*length_x
+  axis_x_end <- length_x
+  
+  axis_y_begin  <- -1*length_y
+  axis_y_end    <- length_y
+  
+  if (missing(tick_step))
+    tick_step <- length_x/2
+  
+  if (is.null(lab_step))
+    lab_step <- length_y/2
+  
+  # axis ticks data
+  tick_x_frame <- data.frame(ticks = seq(axis_x_begin, axis_x_end, 
+                                         by = tick_step))
+  
+  tick_y_frame <-  data.frame(ticks = seq(axis_y_begin, axis_y_end, 
+                                          by = tick_step))
+  
+  # axis labels data
+  lab_x_frame <- subset(data.frame(lab = seq(axis_x_begin, axis_x_end, 
+                                             by = lab_step), zero = 0), 
+                        lab != 0)
+  
+  lab_y_frame <- subset(data.frame(lab = seq(axis_y_begin, axis_y_end,
+                                             by = lab_step),zero = 0), 
+                        lab != 0)
+  
+  # set tick length
+  tick_x_length = 0.01
+  tick_y_length = 0.01
+  
+  # set zero point
+  
+  data <- data.frame(x = 0, y = 0)
+  p <- ggplot(data = data) +
+    
+    # draw axis line
+    geom_segment(y = 0, yend = 0, 
+                 x = axis_x_begin, 
+                 xend = axis_x_end,
+                 size = 0.5) + 
+    geom_segment(x = 0, xend = 0, 
+                 y = axis_y_begin, 
+                 yend = axis_y_end,
+                 size = 0.5) +
+    # x ticks
+    geom_segment(data = tick_x_frame, 
+                 aes(x = ticks, xend = ticks, 
+                     y = 0, yend = 0 - tick_x_length)) +
+    # y ticks
+    geom_segment(data = tick_y_frame, 
+                 aes(x = 0, xend = 0 - tick_y_length, 
+                     y = ticks, yend = ticks)) + 
+    
+    # labels
+    geom_text(data=lab_x_frame, aes(x=lab, y=zero, label=lab), vjust = 1.5) +
+    geom_text(data=lab_y_frame, aes(x=zero, y=lab, label=lab), hjust= 1.5) +
+    theme_minimal()+
+    theme(panel.grid = element_blank(),axis.text = element_blank())
+  return(p)
+}
+
+p <- draw_axis_line(0.2, 0.2)
+
+p1 <- p + geom_point(data=output, aes(beta.age, beta.age.cpm, color = group), size=2)+
+  scale_color_manual(values = c("mRNA+pro_both" = "#dd8653", 
+                                "mRNA_only" = "#59a5d7", 
+                                "pro_only" = "#aa65a4", 
+                                "#878787"),
+                     breaks = c("mRNA+pro_both","mRNA_only","pro_only"))+
+  xlab("protein:beta")+
+  ylab("mRNA:beta")+
+  theme(legend.position = "bottom")+
+  annotate("text", label = "bolditalic(HDF)", parse = TRUE, 
+           x = -0.2, y = 0.2, size = 4, colour = "black")+
+  guides(color = guide_legend(title = "", ncol = 1, byrow = TRUE))
+
+p1
+```
+
+### Fig. S3b
+
+```{r}
+ggplot(tmp.3d, aes(passage, Force, color=Genes)) +
+  geom_line(stat = "identity", size=1)+
+  theme_bw() +
+  # gghighlight 根据条件高亮其中符合条件的线图
+  gghighlight(Genes %in% unique(tmp.62$Genes), use_direct_label = FALSE,unhighlighted_params = list(color = "grey", size = 1)) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(legend.position='none') +
+  xlab('Passages') + 
+  ylab('Force') +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1))+
+  lghplot.addtheme()+
+  labs(title = "Title-62")
+```
+
+### Fig. S3c
+
+```{r}
+figdata <- output %>%
+  filter(fdr.age.Force < 0.05) %>%
+  arrange(fdr.age.Force)
+
+tmp.62 %>% mutate(gene = factor(Genes, levels = figdata$Gene)) %>% 
+ggplot(., aes(passage, log2mRNAs, group = 1)) + 
+  geom_smooth(color="black",method="lm",se=FALSE)+
+  geom_point(size=2, shape=19,color = "steelblue2",alpha=0.5) +
+  facet_wrap(~ gene, scales = "free_y")+
+  theme_bw() + 
+  theme(legend.position='none') +
+  xlab('Passages') + 
+  ylab('mRNA expression') +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1))+
+  theme(panel.grid.minor = element_blank(),
+        panel.grid.major =element_blank())
+```
+
+### Fig. S3d
+
+```{r}
+tmp.62 %>% mutate(gene = factor(Genes, levels = figdata$Gene)) %>% 
+  ggplot(., aes(passage, log2Proteins, group = 1)) + 
+  geom_smooth(color="black",method="lm",se=FALSE)+
+  geom_point(size=2, shape=19,color = "steelblue2",alpha=0.5) +
+  facet_wrap(~ gene, scales = "free_y")+
+  theme_bw() + 
+  theme(legend.position='none') +
+  xlab('Passages') + 
+  ylab('Protein expression') +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1))+
+  theme(panel.grid.minor = element_blank(),
+        panel.grid.major =element_blank())
+```
