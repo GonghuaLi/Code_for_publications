@@ -1,3 +1,6 @@
+In CMD
+compress the rFASTCORMICS_for_RNA_seq_data.rar in current fold
+
 In Matlab, run
 
 >>>run_rFASTCORMICS_benchmark_NCI60;
