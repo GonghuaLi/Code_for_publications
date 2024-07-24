@@ -1,0 +1,38 @@
+# curated Recon2 file, usually do not change.
+curatedRecon3 = './data/consistRecon3_v1.mat';
+
+# cobrasolver: 'cplex' or 'gurobi5'
+cobrasolver = 'cplex';
+
+# use FastMM? yes or no
+isFastMM = 'yes';
+
+# nutrition uptake file 
+exchangeFile = './data/exchange_rxns_white_blood_final_recentmodel.txt';
+
+# Unit of nutrition uptake, recently support two types: uM/100ml/min  or mM/L/min
+uptakeUnite = 'mM/L/min';
+
+# expression file matrix
+expressionFile = './data/NCI60_fpkm59.txt';
+
+# if perform the standardization of expression matrix,'yes' or 'no'
+standardization = 'no';
+
+# expression type, now support three expression data type:
+#     RMA: microarray, normalized by RMA method
+#     FPKM:  RNAseq, normalized by FPKM method
+#     RSEM:  RNAseq, normalized by RSEM method
+expressionType = 'FPKM';
+
+# add protein degradation ?  yes or no  when you do not modeling muscle modeling, please set "no" 
+degradation = 'no';
+
+# number of threading used for FVA
+fva_threading = '2';
+
+# number of cpu that used for mcmc sampling 
+cpu = '4';
+
+# number of points for mcmc
+numPoints = '2000';
