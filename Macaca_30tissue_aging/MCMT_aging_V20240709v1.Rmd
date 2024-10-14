@@ -1,0 +1,2778 @@
+---
+title: "A multi-omics molecular landscape of 30 tissues in aging rhesus macaques(Macaca mulatta)"
+author: "Gong-Hua Li"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: yes
+    toc_float: yes
+    number_sections: no
+  pdf_document: 
+    toc: yes
+    latex_engine: xelatex
+---
+
+# 1. setwd and env
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE,warning = FALSE, message = FALSE)
+knitr::opts_knit$set(root.dir = '/home/ligh/github/code_forpublication/macaca_multiple_tissue/')
+setwd('/home/ligh/github/code_forpublication/macaca_multiple_tissue/')
+```
+
+```{r}
+library(ggplot2)
+library(reshape2)
+#library(Rmisc)
+library(Hmisc)
+library(EnhancedVolcano)
+library(pracma)
+library(car)
+library(ggrepel)
+library(edgeR)
+library(grid)
+library(gridExtra)
+library(Mfuzz)
+library(M3C)
+library(preprocessCore)
+library(rlist)
+library(ggsci)
+library(scales)
+library(data.table)
+library(RColorBrewer)
+library(readxl)
+library(MetaDE)
+library(rGPMM)
+library(RTN)
+library(org.Hs.eg.db)
+library(clusterProfiler)
+#library(pathview)
+library(enrichplot)
+#setwd("/home/ligh/github/code_forpublication/macaca_multiple_tissue/")
+#source('./subroutines.R')
+#source('./subroutines_for_MCMT_aging.R')
+source('./MCMT_subfunctions.R')
+```
+
+
+# 2. load data
+
+```{r}
+#whole body data
+load('./data/pro.whole.fdr0.01_v20210108_from_NOVO_remap_solid_tissues.Rdata')
+load('./data/mrna.whole_v20210108_solid_tissues.Rdata')
+load('./data/met_whole_from_novo_v20210108_solid_tissues.Rdata')
+
+# tissue data
+load('./data/pro.tissues_v20210108_solid_tissues.Rdata')
+load('./data/mrna.tissues_v20210108_solid_tissues.Rdata')
+load('./data/met.tissues_v20210108_solid_tissues_new.Rdata')
+
+
+load('./data/met.header.all.hmdb_curated.Rdata')
+idx = !is.na(met.header.all.hmdb$hmdbid_highconfidence)
+met.header.all.hmdb.v = met.header.all.hmdb[idx,]
+
+```
+
+# 3. quality control
+
+```{r}
+# protein remove outliners
+tmp = pro.whole
+pp = prcomp(t(tmp),cor=F)
+outlinerids = c()
+thetissues = unique(pro.whole.info$tissue_en)
+for(i in 1:length(thetissues)){
+    idx = pro.whole.info$tissue_en == thetissues[i]
+    tmpinfo = pro.whole.info[idx,]
+    outx = is.outliner(pp$x[idx,1])
+    outy = is.outliner(pp$x[idx,2])
+    #outy = is.outliner(pp$x[idx,2],coef = 3)
+    if(sum(outx | outy) > 0){
+        outlinerids = c(outlinerids,rownames(tmpinfo)[outx | outy])
+    } 
+}
+outlinerids
+vid = !is.element(colnames(pro.whole),outlinerids)
+pro.whole = pro.whole[,vid]
+pro.whole.info = pro.whole.info[vid,]
+
+```
+
+```{r}
+# met remove outliners
+tmp = met.whole
+pp = prcomp(t(tmp),cor=F)
+outlinerids = c()
+thetissues = unique(met.whole.info$tissue_en)
+for(i in 1:length(thetissues)){
+    idx = met.whole.info$tissue_en == thetissues[i]
+    tmpinfo = met.whole.info[idx,]
+    outx = is.outliner(pp$x[idx,1])
+    outy = is.outliner(pp$x[idx,2])
+    #outy = is.outliner(pp$x[idx,2],coef = 3)
+    if(sum(outx | outy) > 0){
+        outlinerids = c(outlinerids,rownames(tmpinfo)[outx | outy])
+    } 
+}
+outlinerids
+vid = !is.element(colnames(met.whole),outlinerids)
+met.whole = met.whole[,vid]
+met.whole.info = met.whole.info[vid,]
+```
+
+```{r}
+# mrna remove outliners
+tmp = mrna.whole
+pp = prcomp(t(tmp),cor=F)
+outlinerids = c()
+thetissues = unique(mrna.whole.info$tissue_en)
+for(i in 1:length(thetissues)){
+    idx = mrna.whole.info$tissue_en == thetissues[i]
+    tmpinfo = mrna.whole.info[idx,]
+    outx = is.outliner(pp$x[idx,1])
+    outy = is.outliner(pp$x[idx,2])
+    #outy = is.outliner(pp$x[idx,2],coef = 3)
+    if(sum(outx | outy) > 0){
+        outlinerids = c(outlinerids,rownames(tmpinfo)[outx | outy])
+    } 
+}
+outlinerids
+vid = !is.element(colnames(mrna.whole),outlinerids)
+mrna.whole = mrna.whole[,vid]
+mrna.whole.info = mrna.whole.info[vid,]
+```
+
+```{r}
+# match proteome, trancriptome and metabolism
+alltissues = names(pro.tissues)
+pro.tissues.v = pro.tissues
+for(i in 1:length(alltissues)){
+  pro.tissues.v[[i]] = delete_dup_genes_forprotein(pro.tissues[[i]],
+                                                   gtf.gene2symbol = pro.tissues.header[[i]])
+}
+
+mrna.tissues = mrna.tissues[names(pro.tissues)]
+mrna.tissues.info = mrna.tissues.info[names(pro.tissues)]
+
+met.tissues = met.tissues[names(pro.tissues)]
+met.tissues.info = met.tissues.info[names(pro.tissues)]
+met.tissues.header = met.tissues.header[names(pro.tissues)]
+```
+
+# 4. set colors
+
+```{r}
+alltissues = names(pro.tissues)
+
+tissue.systems = c('Integumentary','Endocrine','Brain','Respiratory','Digestive',
+             'Cardiovascular','Cardiovascular','Brain','Digestive','Endocrine',
+             'Cardiovascular','Muscle','Reproductive','Digestive','Brain',
+             'Immune','Renal','Endocrine','Digestive','Reproductive',
+             'Digestive','Brain','Muscle','Immune','Integumentary','Endocrine',
+            'Brain','Immune','Cardiovascular','Reproductive')
+names(tissue.systems) = alltissues
+tissue.color = pal_npg()(10)
+names(tissue.color) = levels(factor(tissue.systems))
+
+tissue.systems
+tissue.color
+```
+
+```{r}
+mypal = pal_npg()(10)
+mypal
+show_col(mypal)
+alltissues = names(pro.tissues)
+```
+
+# 5. Figure 1: overall data distribution
+
+## 5.1 Figure 1A flowchart
+
+## 5.2 Figure 1B
+
+```{r}
+num_omics = data.frame(num_mrna = rep(0,length(alltissues)),stringsAsFactors = F,
+                       tissues = alltissues,
+                       tissue_systems = tissue.systems,
+                      num_protein = rep(0,length(alltissues)),
+                       num_met = rep(0,length(alltissues))
+                       )
+for(i in 1:length(alltissues)){
+    num_omics$num_mrna[i] = nrow(mrna.tissues[[alltissues[i]]])
+    num_omics$num_protein[i] = nrow(pro.tissues[[alltissues[i]]])
+    num_omics$num_met[i] = nrow(met.tissues[[alltissues[i]]])
+}
+rownames(num_omics) = alltissues
+```
+
+```{r}
+idx = sort.int(num_omics$num_protein,decreasing = F,index.return = T)$ix
+num_omics.v = num_omics[idx,]
+idx = sort.int(num_omics.v$tissue_systems,decreasing = F,index.return = T)$ix
+num_omics.v = num_omics.v[idx,]
+num_omics.v
+
+
+writetxt(num_omics.v[,c(2,3,1,4,5)],'./out/20240709_aging/Figure1_Overall_data_distribution/Figure_1B_number_omics_data.txt')
+```
+
+```{r}
+idx = sort.int(num_omics$num_protein,decreasing = F,index.return = T)$ix
+num_omics.v = num_omics[idx,]
+idx = sort.int(num_omics.v$tissue_systems,decreasing = F,index.return = T)$ix
+num_omics.v = num_omics.v[idx,]
+
+pomics = list()
+pomics[[1]] = ggplot(num_omics.v,aes(x = factor(tissues,level = tissues),
+                                     y = num_met,
+                       color = tissue_systems,fill = tissue_systems))+ 
+  geom_bar(stat="identity")+
+theme_classic()+lghplot.addtheme(legend.position = 'none',hjust = 1,size = 10)+ 
+  scale_color_npg()+scale_fill_npg()+ 
+ theme(axis.text.x=element_blank(),axis.title.x=element_blank())+ 
+  ylab('Number of metabolites')
+
+
+pomics[[2]] = ggplot(num_omics.v,aes(x = factor(tissues,level = tissues),
+                                     y = num_protein,
+                       color = tissue_systems,fill = tissue_systems))+ 
+  geom_bar(stat="identity")+
+theme_classic()+lghplot.addtheme(legend.position = 'none',hjust = 1,size = 10)+
+  scale_color_npg()+scale_fill_npg()+
+ylab('Number of proteins')+ xlab('')
+
+pdf(file = './out/20240709_aging/Figure1_Overall_data_distribution/Figure1B_number_of_omicsV__promet.pdf',width = 12,height = 9)
+grid.arrange(arrangeGrob(grobs = pomics,ncol = 1,
+                         top = 'Identified proteins and metabolites',
+                         heights = c(3.2,5.8)))
+
+dev.off()
+mean(num_omics.v$num_mrna)
+mean(num_omics.v$num_protein)
+mean(num_omics.v$num_met)
+```
+
+## 5.3 Figure 1C_1E
+
+### 5.3.1 Figure 1C mRNA
+
+```{r Figure_1C, fig.height = 4, fig.width = 4, fig.align = "center"}
+### for mRNA
+mrna.whole.std = standardise_matrix(mrna.whole)
+
+p = tsne(mrna.whole.std,labels=tissue.systems[mrna.whole.info$tissues],
+         legendtextsize = 10,dotsize = 2)
+p = p + theme_classic()+lghplot.addtheme(legend.position = 'none')+ 
+  scale_color_npg()+ xlab('tsne 1') + ylab('tsne 2')+
+theme(axis.line = element_line(size = 1.0)) + ggtitle('Transcriptome')
+pdf(file ="./out/20240709_aging/Figure1_Overall_data_distribution/Figure1C_tSNE_mrna_using_standardised.pdf",height = 4,width = 4)
+print(p)
+dev.off()
+
+
+p = tsne(mrna.whole.std,labels=tissue.systems[mrna.whole.info$tissues],
+         legendtextsize = 10,dotsize = 2)
+p = p + theme_classic()+lghplot.addtheme(legend.position = 'right')+ 
+  scale_color_npg()+ xlab('tsne 1') + ylab('tsne 2')+
+theme(axis.line = element_line(size = 1.0)) + ggtitle('Transcriptome')
+pdf(file ="./out/20240709_aging/Figure1_Overall_data_distribution/Figure1C_tSNE_mrna_using_standardised_with_legend.pdf",height = 4,width = 4)
+print(p)
+dev.off()
+
+```
+
+### 5.3.2 Figure 1D protein
+
+```{r Figure_1D, fig.height = 4, fig.width = 4, fig.align = "center"}
+
+ida = rowSums(pro.whole < 0.1) < 0.2 * ncol(pro.whole)
+sum(ida)
+pro.whole.cons = pro.whole[ida,]
+pro.whole.std = standardise_matrix(pro.whole.cons)
+
+p = tsne(pro.whole.std,labels=tissue.systems[pro.whole.info$tissue_en],
+         legendtextsize = 10,dotsize = 2)
+p = p + theme_classic()+lghplot.addtheme(legend.position = 'none')+ 
+  theme(axis.line = element_line(size = 1.0))+
+  scale_color_npg()+ xlab('tsne 1') + ylab('tsne 2') + ggtitle('Proteome')
+pdf(file ="./out/20240709_aging/Figure1_Overall_data_distribution/Figure1D_tSNE_protein_using_standardised.pdf",height = 4,width = 4)
+print(p)
+dev.off()
+
+```
+
+### 5.3.3 Figure 1E metabolism
+
+```{r Figure_1E, fig.height = 4, fig.width = 4, fig.align = "center"}
+met.whole.std = standardise_matrix(met.whole)
+p = tsne(met.whole.std,labels=tissue.systems[met.whole.info$Tissues],
+         legendtextsize = 10,dotsize = 2)
+p = p + theme_classic()+lghplot.addtheme(legend.position = 'none')+ 
+  scale_color_npg()+ xlab('tsne 1') + ylab('tsne 2')+
+theme(axis.line = element_line(size = 1.0)) + ggtitle('Metabolome')
+pdf(file ="./out/20240709_aging/Figure1_Overall_data_distribution/Figure1E_tSNE_met_using_std.pdf",height = 4,width = 4)
+print(p)
+dev.off()
+```
+
+## 5.4 Figure 1F overall DEGs
+
+### 5.4.1 proteins
+
+```{r}
+DEproFC = list()
+DEproPvalue = list()
+DEproAging = list()
+DEproFC.develop = list()
+DEproPvalue.develop = list()
+for(i in 1:length(alltissues)){
+    thistissue = alltissues[i]
+    thispro = pro.tissues.v[[thistissue]]
+    thispro.info = pro.tissues.info[[thistissue]]
+    thisDEpro = DEGenes.simplified(thispro,catagory = thispro.info$stage == 4,
+                    subset = thispro.info$stage == 4 | thispro.info$stage == 2)
+    thisDEpro.develop = DEGenes.simplified(thispro,catagory = thispro.info$stage == 2,
+                    subset = thispro.info$stage == 2 | thispro.info$stage == 1)
+    forsort = thisDEpro$Pvalue
+    forsort[is.na(forsort)] = 1
+    idx = sort.int(forsort,decreasing = F,index.return = T)$ix
+    DEproAging[[i]] = thisDEpro[idx,-5]
+    DEproAging[[i]]$log2FC.devControl = thisDEpro.develop$log2FC
+    DEproAging[[i]]$Pvalue.devControl = thisDEpro.develop$Pvalue
+    
+    DEproFC[[i]] = thisDEpro$log2FC
+    names(DEproFC[[i]]) = rownames(thisDEpro)
+    DEproPvalue[[i]] = thisDEpro$Pvalue
+    names(DEproPvalue[[i]])  = rownames(thisDEpro)
+    
+    DEproFC.develop[[i]] = thisDEpro.develop$log2FC
+    names(DEproFC.develop[[i]]) = rownames(thisDEpro.develop)
+    DEproPvalue.develop[[i]] = thisDEpro.develop$Pvalue
+    names(DEproPvalue.develop[[i]])  = rownames(thisDEpro.develop)
+}
+names(DEproAging) = alltissues
+names(DEproFC) = alltissues
+names(DEproPvalue) = alltissues
+names(DEproFC.develop) = alltissues
+names(DEproPvalue.develop) = alltissues
+
+```
+
+```{r}
+proteinVoconoPlot = list()
+names.DEproAging = names(DEproAging)
+for(i in 1:length(DEproAging)){
+    res2 = DEproAging[[i]]
+    
+    proteinVoconoPlot[[i]] = plot_Volcano(res2,names.DEproAging[i])
+}
+```
+
+```{r Figure_S2_DEpro, fig.height = 18, fig.width = 16, fig.align = "center"}
+pdf(file = './out/20240709_aging/Figure1_Overall_data_distribution/Figure_S2_DEpro_each_tissueV1.pdf',width = 3*5+1,height =3*6)
+grid.arrange(arrangeGrob(grobs = proteinVoconoPlot,ncol = 5))
+dev.off()
+```
+```{r}
+colnames(DEproAging[[1]])
+```
+
+
+```{r}
+#Data S2
+openxlsx::write.xlsx(DEproAging, file = "./out/20240709_aging/Figure1_Overall_data_distribution/Data S2_DE_tissue_Aging_pro.xlsx")
+
+# reducce size Data S2
+tpath = "./out/20240709_aging/Figure1_Overall_data_distribution/Data S2_DE_tissue_Aging_pro.xlsx"
+sheetNames = openxlsx::getSheetNames(tpath)
+xx = list()
+for(i in 1:length(sheetNames)){
+    tmp = openxlsx::read.xlsx(tpath,sheet = sheetNames[i])
+    tmp[c(2,3,4,7,8)] = signif(tmp[c(2,3,4,7,8)],3)
+    tmp = tmp[,-c(5,6,7,8)]
+    xx[[i]] = tmp
+}
+names(xx) = sheetNames
+openxlsx::write.xlsx(xx, file = "./out/20240709_aging/Figure1_Overall_data_distribution/reduce_Data S2_DE_tissue_Aging_pro.xlsx")
+```
+
+```{r}
+# num up and down proteins
+DEproFC_matrix = list_to_matrix(DEproFC,alltissues)
+DEproPvalue_matrix = list_to_matrix(DEproPvalue,alltissues)
+
+DEproFC_matrix.develop = list_to_matrix(DEproFC.develop,alltissues)
+DEproPvalue_matrix.develop = list_to_matrix(DEproPvalue.develop,alltissues)
+
+Aging_pro_sigup_matrix = (DEproFC_matrix > 0.2 & DEproPvalue_matrix < 0.05  
+                          & DEproPvalue_matrix.develop > 0.05) +0
+Aging_pro_sigdown_matrix = -((DEproFC_matrix < -0.2 & DEproPvalue_matrix < 0.05 
+                              & DEproPvalue_matrix.develop > 0.05) +0)
+Aging_pro_sigall_matrix = Aging_pro_sigup_matrix + Aging_pro_sigdown_matrix
+
+Aging_pro_updown = data.frame(stringsAsFactors = F,
+                       num.up = colSums(Aging_pro_sigup_matrix,na.rm =T)/
+                          colSums(!is.na(Aging_pro_sigup_matrix)),
+                       num.down = colSums(Aging_pro_sigdown_matrix,na.rm =T)/
+                          colSums(!is.na(Aging_pro_sigdown_matrix)),
+                       num.all = colSums(abs(Aging_pro_sigall_matrix),na.rm =T)/
+                         colSums(!is.na(Aging_pro_sigall_matrix)),
+                        tissues = colnames(Aging_pro_sigup_matrix),
+                        tissue_systems = tissue.systems)
+rownames(Aging_pro_updown) = Aging_pro_updown$tissues
+
+Aging_pro_updown
+mean(Aging_pro_updown$num.all)
+```
+### 5.4.2 mrna
+
+```{r}
+DEmrnaFC = list()
+DEmrnaPvalue = list()
+DEmrnaAging = list()
+DEmrnaFC.develop = list()
+DEmrnaPvalue.develop = list()
+for(i in 1:length(alltissues)){
+    #Mfuzz
+    thistissue = alltissues[i]
+    thismrna = mrna.tissues[[thistissue]]
+    #thismrna.header = mrna.tissues.header[[thistissue]]
+    thismrna.info = mrna.tissues.info[[thistissue]]
+    if (sum(thismrna.info$stage == 1) ==1){ 
+        thismrna = cbind(thismrna[,thismrna.info$stage == 1],thismrna)
+        thismrna.info = rbind(thismrna.info[thismrna.info$stage == 1,],thismrna.info)
+    }
+    if (sum(thismrna.info$stage == 4) ==1){ 
+        thismrna = cbind(thismrna,thismrna[,thismrna.info$stage == 4])
+        thismrna.info = rbind(thismrna.info,thismrna.info[thismrna.info$stage == 4,])
+    }
+    
+    thisDEmrna = DEGenes.simplified(thismrna,catagory = thismrna.info$stage == 4,
+                  subset = thismrna.info$stage == 4 | thismrna.info$stage == 2)
+    
+    thisDEmrna.develop = DEGenes.simplified(thismrna,catagory = thismrna.info$stage == 2,
+                    subset = thismrna.info$stage == 2 | thismrna.info$stage == 1)
+    
+    idx = sort.int(thisDEmrna$Pvalue,decreasing = F,index.return = T)$ix
+    DEmrnaAging[[i]] = thisDEmrna[idx,-5]
+    DEmrnaAging[[i]]$log2FC.devControl = thisDEmrna.develop$log2FC
+    DEmrnaAging[[i]]$Pvalue.devControl = thisDEmrna.develop$Pvalue
+    
+    
+    DEmrnaFC[[i]] = thisDEmrna$log2FC
+    names(DEmrnaFC[[i]]) = rownames(thisDEmrna)
+    DEmrnaPvalue[[i]] = thisDEmrna$Pvalue
+    names(DEmrnaPvalue[[i]])  = rownames(thisDEmrna)
+    
+    DEmrnaFC.develop[[i]] = thisDEmrna.develop$log2FC
+    names(DEmrnaFC.develop[[i]]) = rownames(thisDEmrna.develop)
+    DEmrnaPvalue.develop[[i]] = thisDEmrna.develop$Pvalue
+    names(DEmrnaPvalue.develop[[i]])  = rownames(thisDEmrna.develop)
+    
+    
+}
+names(DEmrnaFC) = alltissues
+names(DEmrnaPvalue) = alltissues
+names(DEmrnaAging) = alltissues
+names(DEmrnaFC.develop) = alltissues
+names(DEmrnaPvalue.develop) = alltissues
+
+
+
+DEmrnaFC_matrix = list_to_matrix(DEmrnaFC,alltissues)
+DEmrnaPvalue_matrix = list_to_matrix(DEmrnaPvalue,alltissues)
+
+DEmrnaFC_matrix.develop = list_to_matrix(DEmrnaFC.develop,alltissues)
+DEmrnaPvalue_matrix.develop = list_to_matrix(DEmrnaPvalue.develop,alltissues)
+```
+
+```{r}
+mrnaVoconoPlot = list()
+names.DEmrnaAging = names(DEmrnaAging)
+for(i in 1:length(DEmrnaAging)){
+    res2 = DEmrnaAging[[i]]
+    
+    mrnaVoconoPlot[[i]] = plot_Volcano(res2,names.DEmrnaAging[i])
+}
+#this plot is large, plot to file
+pdf(file = './out/20240709_aging/Figure1_Overall_data_distribution/Figure_S1_DEmrna_each_tissueV1.pdf',
+    width = 3*5+1,height =3*6)
+grid.arrange(arrangeGrob(grobs = mrnaVoconoPlot,ncol = 5))
+dev.off()
+```
+
+
+```{r}
+#data S1
+openxlsx::write.xlsx(DEmrnaAging, file = "./out/20240709_aging/Figure1_Overall_data_distribution/Data S1_DE_tissue_Aging_mRNA.xlsx")
+
+# reducce size Data S1
+tpath = "./out/20240709_aging/Figure1_Overall_data_distribution/Data S1_DE_tissue_Aging_mRNA.xlsx"
+sheetNames = openxlsx::getSheetNames(tpath)
+xx = list()
+for(i in 1:length(sheetNames)){
+    tmp = openxlsx::read.xlsx(tpath,sheet = sheetNames[i])
+    tmp[c(2,3,4,7,8)] = signif(tmp[c(2,3,4,7,8)],3)
+    tmp = tmp[,-c(5,6,7,8)]
+    xx[[i]] = tmp
+}
+names(xx) = sheetNames
+openxlsx::write.xlsx(xx, file = "./out/20240709_aging/Figure1_Overall_data_distribution/reduce_Data S1_DE_tissue_Aging_mRNA.xlsx")
+```
+
+```{r}
+Aging_mrna_sigup_matrix = (DEmrnaFC_matrix > 0.2 & DEmrnaPvalue_matrix < 0.05 &
+                             DEmrnaPvalue_matrix.develop > 0.05) +0
+Aging_mrna_sigdown_matrix = -((DEmrnaFC_matrix < -0.2 & DEmrnaPvalue_matrix < 0.05 &
+                                 DEmrnaPvalue_matrix.develop > 0.05) +0)
+Aging_mrna_sigall_matrix = Aging_mrna_sigup_matrix + Aging_mrna_sigdown_matrix
+
+Aging_mrna_updown = data.frame(stringsAsFactors = F,
+                               num.up = colSums(Aging_mrna_sigup_matrix,na.rm =T)/
+                                 colSums(!is.na(Aging_mrna_sigup_matrix)),
+                              num.down = colSums(Aging_mrna_sigdown_matrix,na.rm =T)/
+                                colSums(!is.na(Aging_mrna_sigdown_matrix)),
+                              num.all = colSums(abs(Aging_mrna_sigall_matrix),na.rm =T)/
+                                colSums(!is.na(Aging_mrna_sigall_matrix)),
+                             tissues = colnames(Aging_mrna_sigup_matrix),
+                             tissue_systems = tissue.systems)
+rownames(Aging_mrna_updown) = Aging_mrna_updown$tissues
+Aging_mrna_updown
+mean(Aging_mrna_updown$num.all)
+```
+### 5.4.3 metabolites
+
+```{r}
+DEmetFC = list()
+DEmetPvalue = list()
+DEmetAging = list()
+DEmetFC.develop = list()
+DEmetPvalue.develop = list()
+for(i in 1:length(alltissues)){
+    #Mfuzz
+    thistissue = alltissues[i]
+    thismet = met.tissues[[thistissue]]
+    thismet.header = met.tissues.header[[thistissue]]
+    thismet.info = met.tissues.info[[thistissue]]
+    if (sum(thismet.info$stage == 1) ==1){ 
+        thismet = cbind(thismet[,thismet.info$stage == 1],thismet)
+        thismet.info = rbind(thismet.info[thismet.info$stage == 1,],thismet.info)
+    }
+    if (sum(thismet.info$stage == 4) ==1){ 
+        thismet = cbind(thismet,thismet[,thismet.info$stage == 4])
+        thismet.info = rbind(thismet.info,thismet.info[thismet.info$stage == 4,])
+    }
+    
+    thisDEmet = DEGenes.simplified(thismet,catagory = thismet.info$stage == 4,
+                               subset = thismet.info$stage == 4 | thismet.info$stage == 2)
+    
+    thisDEmet.develop = DEGenes.simplified(thismet,catagory = thismet.info$stage == 2,
+                               subset = thismet.info$stage == 2 | thismet.info$stage == 1)
+    
+    forsort = thisDEmet$Pvalue
+    forsort[is.na(forsort)] = 1
+    idx = sort.int(forsort,decreasing = F,index.return = T)$ix
+    DEmetAging[[i]] = thisDEmet[idx,-5]
+    DEmetAging[[i]]$log2FC.devControl = thisDEmet.develop$log2FC
+    DEmetAging[[i]]$Pvalue.devControl = thisDEmet.develop$Pvalue
+    
+    DEmetFC[[i]] = thisDEmet$log2FC
+    names(DEmetFC[[i]]) = rownames(thisDEmet)
+    DEmetPvalue[[i]] = thisDEmet$Pvalue
+    names(DEmetPvalue[[i]])  = rownames(thisDEmet)
+    
+    DEmetFC.develop[[i]] = thisDEmet.develop$log2FC
+    names(DEmetFC.develop[[i]]) = rownames(thisDEmet.develop)
+    DEmetPvalue.develop[[i]] = thisDEmet.develop$Pvalue
+    names(DEmetPvalue.develop[[i]])  = rownames(thisDEmet.develop)
+    
+    
+}
+names(DEmetAging) = alltissues
+names(DEmetFC) = alltissues
+names(DEmetPvalue) = alltissues
+DEmetFC_matrix = list_to_matrix(DEmetFC,alltissues)
+DEmetPvalue_matrix = list_to_matrix(DEmetPvalue,alltissues)
+
+DEmetFC_matrix.develop = list_to_matrix(DEmetFC.develop,alltissues)
+DEmetPvalue_matrix.develop = list_to_matrix(DEmetPvalue.develop,alltissues)
+
+```
+
+```{r}
+metVoconoPlot = list()
+names.DEmetAging = names(DEmetAging)
+for(i in 1:length(DEmetAging)){
+    res2 = DEmetAging[[i]]
+    
+    metVoconoPlot[[i]] = plot_Volcano(res2,names.DEmetAging[i])
+}
+
+pdf(file = './out/20240709_aging/Figure1_Overall_data_distribution/Figure_S3_DEmet_each_tissueV1.pdf',width = 3*5+1,height =3*6)
+grid.arrange(arrangeGrob(grobs = metVoconoPlot,ncol = 5))
+dev.off()
+```
+
+
+```{r}
+#write Data S3
+openxlsx::write.xlsx(DEmetAging, file = "./out/20240709_aging/Figure1_Overall_data_distribution/Data S3_DE_tissue_Aging_metabolite.xlsx")
+
+# reducce size Data S2
+tpath = "./out/20240709_aging/Figure1_Overall_data_distribution/Data S3_DE_tissue_Aging_metabolite.xlsx"
+sheetNames = openxlsx::getSheetNames(tpath)
+xx = list()
+for(i in 1:length(sheetNames)){
+    tmp = openxlsx::read.xlsx(tpath,sheet = sheetNames[i])
+    tmp[c(2,3,4,7,8)] = signif(tmp[c(2,3,4,7,8)],3)
+    tmp = tmp[,-c(5,6,7,8)]
+    xx[[i]] = tmp
+}
+names(xx) = sheetNames
+openxlsx::write.xlsx(xx, file = "./out/20240709_aging/Figure1_Overall_data_distribution/reduce_Data S3_DE_tissue_Aging_metabolite.xlsx")
+```
+
+```{r}
+Aging_met_sigup_matrix = (DEmetFC_matrix > 0.2 & DEmetPvalue_matrix < 0.05 &
+                            DEmetPvalue_matrix.develop > 0.05) + 0
+Aging_met_sigdown_matrix = -((DEmetFC_matrix < -0.2 & DEmetPvalue_matrix < 0.05  &
+                                DEmetPvalue_matrix.develop > 0.05) + 0)
+Aging_met_sigall_matrix = Aging_met_sigup_matrix + Aging_met_sigdown_matrix
+
+Aging_met_updown = data.frame(stringsAsFactors = F,
+                              num.up = colSums(Aging_met_sigup_matrix,na.rm =T)/
+                                colSums(!is.na(Aging_met_sigup_matrix)),
+                              num.down = colSums(Aging_met_sigdown_matrix,na.rm =T)/
+                                colSums(!is.na(Aging_met_sigdown_matrix)),
+                              num.all = colSums(abs(Aging_met_sigall_matrix),na.rm =T)/
+                                colSums(!is.na(Aging_met_sigall_matrix)),
+                             tissues = colnames(Aging_met_sigup_matrix),
+                             tissue_systems = tissue.systems)
+rownames(Aging_met_updown) = Aging_met_updown$tissues
+Aging_met_updown
+mean(Aging_met_updown$num.all)
+```
+
+### 5.4.4 plot Figure 1F
+```{r}
+fmt_dcimals <- function(decimals=0){
+    function(x) format(x,nsmall = decimals,scientific = FALSE)
+}
+
+```
+
+```{r}
+plotAgingNum = list()
+idx = sort.int(Aging_pro_updown$num.all,decreasing = F,index.return = T)$ix
+Aging_pro_updown.v = Aging_pro_updown[idx,]
+idx = sort.int(Aging_pro_updown.v$tissue_systems,decreasing = F,index.return = T)$ix
+Aging_pro_updown.v = Aging_pro_updown.v[idx,]
+tissueindex = rownames(Aging_pro_updown.v)
+
+#metabolites
+Aging_met_updown.v = Aging_met_updown[tissueindex,]
+
+p1 = ggplot(Aging_met_updown.v,aes(x = factor(tissues,level = tissues),y = num.up,
+                       color = tissue_systems,fill = tissue_systems))+ 
+  geom_bar(stat="identity",alpha = 0.8)+theme(axis.line = element_line(size = 1.0))
+
+plotAgingNum[[1]] = p1+ geom_bar(stat="identity",aes(y = num.down),alpha = 0.6)+
+  geom_hline(yintercept = 0)+
+theme_classic()+lghplot.addtheme(legend.position = 'none',hjust = 1,size = 11)+
+theme(axis.text.y = element_text(size = 8, face = "bold", color = "black"))+
+  theme(axis.text.x = element_text(size = 1, face = "bold", color = "black"))+
+  scale_color_npg(alpha = 0.9)+
+scale_fill_npg(alpha = 0.9)+theme(axis.ticks.x = element_blank(),
+        axis.text.x = element_blank(),axis.line.x =element_blank())+
+scale_y_continuous(labels = fmt_dcimals(2))+
+ylab('Metabolites')+ xlab('')
+
+#protein
+Aging_pro_updown.v = Aging_pro_updown[tissueindex,]
+
+p1 = ggplot(Aging_pro_updown.v,aes(x = factor(tissues,level = tissues),y = num.up,
+                       color = tissue_systems,fill = tissue_systems))+ 
+  geom_bar(stat="identity",alpha = 0.8)+theme(axis.line = element_line(size = 1.0))
+
+plotAgingNum[[2]] = p1+ geom_bar(stat="identity",aes(y = num.down),alpha = 0.6)+
+  geom_hline(yintercept = 0)+
+theme_classic()+lghplot.addtheme(legend.position = 'none',hjust = 1,size = 11)+
+  theme(axis.text.x = element_text(size = 1, face = "bold", color = "black"))+
+theme(axis.text.y = element_text(size = 8, face = "bold", color = "black"))+
+  scale_color_npg(alpha = 0.9)+
+scale_fill_npg(alpha = 0.9)+ theme(axis.ticks.x = element_blank(),
+        axis.text.x = element_blank(),axis.line.x =element_blank())+
+scale_y_continuous(labels = fmt_dcimals(2))+
+ylab('Proteins')+ xlab('')
+
+#mrna
+Aging_mrna_updown.v = Aging_mrna_updown[tissueindex,]
+
+p1 = ggplot(Aging_mrna_updown.v,aes(x = factor(tissues,level = tissues),y = num.up,
+                       color = tissue_systems,fill = tissue_systems))+ 
+  geom_bar(stat="identity",alpha = 0.8)+theme(axis.line = element_line(size = 1.0))
+
+plotAgingNum[[3]] = p1+ geom_bar(stat="identity",aes(y = num.down),alpha = 0.6)+
+  geom_hline(yintercept = 0)+
+theme_classic()+lghplot.addtheme(legend.position = 'none',hjust = 1,size = 11)+
+  theme(axis.text.x = element_text(size = 11, face = "bold", color = "black"))+
+theme(axis.text.y = element_text(size = 8, face = "bold", color = "black"))+
+  scale_color_npg(alpha = 0.9)+
+scale_fill_npg(alpha = 0.9)+scale_y_continuous(labels = fmt_dcimals(2))+
+ylab('mRNAs')+ xlab('')
+
+pdf(file = './out/20240709_aging/Figure1_Overall_data_distribution/Figure1F_number_of_Aging_moleculars_prometv2_npg.pdf',width = 12,height =5.1)
+grid.arrange(arrangeGrob(grobs = plotAgingNum[1:3],
+                         top = 'Overall molecular changes with aging',
+                         ncol = 1,heights = c(1.2,1.2,2.7)))
+dev.off()
+
+Aging_pro_updown.v
+```
+
+# 6 Figure 2 common aging protein and mrna
+
+## 6.1 meta common DEs
+
+```{r}
+Metapro = metaGene(pro.tissues.v,pro.tissues.info)
+profc.all = Metapro[, substr(colnames(Metapro),1,7) == 'log2FC_']
+colnames(profc.all) =gsub('log2FC_','',colnames(profc.all))
+Metapro$manyNA = rowSums(is.na(profc.all)) >= ncol(profc.all)/3
+writetxt(Metapro,'./out/20240709_aging/Figure2_DEG_GO_tissue/Common_DEpro_from_metapro.txt')
+tmp = Metapro
+tmp[,2:(ncol(tmp))] = signif(tmp[,2:(ncol(tmp))],3)
+writetxt(tmp,'./out/20240709_aging/Figure2_DEG_GO_tissue/Common_DEpro_from_metapro_reducesize.txt')
+
+Metamrna = metaGene(mrna.tissues,mrna.tissues.info)
+mrnafc.all = Metamrna[, substr(colnames(Metamrna),1,7) == 'log2FC_']
+colnames(mrnafc.all) =gsub('log2FC_','',colnames(mrnafc.all))
+Metamrna$manyNA = rowSums(is.na(mrnafc.all)) >= ncol(mrnafc.all)/3
+writetxt(Metamrna,'./out/20240709_aging/Figure2_DEG_GO_tissue/Common_DEmrna_from_metamrna.txt')
+
+tmp = Metamrna
+tmp[,2:(ncol(tmp))] = signif(tmp[,2:(ncol(tmp))],3)
+writetxt(tmp,'./out/20240709_aging/Figure2_DEG_GO_tissue/Common_DEmrna_from_metamrna_reducesize.txt')
+
+Metamet = metaGene(met.tissues,met.tissues.info)
+metfc.all = Metamet[, substr(colnames(Metamet),1,7) == 'log2FC_']
+colnames(metfc.all) =gsub('log2FC_','',colnames(metfc.all))
+Metamet$manyNA = rowSums(is.na(metfc.all)) >= ncol(metfc.all)/3
+writetxt(Metamet,'./out/20240709_aging/Figure2_DEG_GO_tissue/Common_DEmet_from_metamet.txt')
+
+tmp = Metamet
+tmp[,2:(ncol(tmp))] = signif(tmp[,2:(ncol(tmp))],3)
+writetxt(tmp,'./out/20240709_aging/Figure2_DEG_GO_tissue/Common_DEmet_from_metamet_reducesize.txt')
+
+```
+
+```{r}
+commonMols.filter = list()
+
+commonMols.filter$FDR005 = 
+  list(macaca_uppro_meta = Metapro$ID[Metapro$MetaFDR < 0.05 & Metapro$Metalog2FC > 0.20 & !Metapro$manyNA],
+       macaca_downpro_meta = Metapro$ID[Metapro$MetaFDR < 0.05 & Metapro$Metalog2FC < -0.20 & !Metapro$manyNA],
+       macaca_upmrna_meta = Metamrna$ID[Metamrna$MetaFDR < 0.05 & Metamrna$Metalog2FC > 0.20 & !Metamrna$manyNA],
+       macaca_downmrna_meta = Metamrna$ID[Metamrna$MetaFDR < 0.05 & Metamrna$Metalog2FC < -0.20 & !Metamrna$manyNA],
+       macaca_upmet_meta = Metamet$ID[Metamet$MetaFDR < 0.05 & Metamet$Metalog2FC > 0.20 & !Metamet$manyNA],
+       macaca_downmet_meta = Metamet$ID[Metamet$MetaFDR < 0.05 & Metamet$Metalog2FC < -0.20 & !Metamet$manyNA]
+       
+                         )
+commonMols.filter$FDR001 = 
+  list(macaca_uppro_meta = Metapro$ID[Metapro$MetaFDR < 0.01 & Metapro$Metalog2FC > 0.20 & !Metapro$manyNA],
+       macaca_downpro_meta = Metapro$ID[Metapro$MetaFDR < 0.01 & Metapro$Metalog2FC < -0.20 & !Metapro$manyNA],
+       macaca_upmrna_meta = Metamrna$ID[Metamrna$MetaFDR < 0.01 & Metamrna$Metalog2FC > 0.20 & !Metamrna$manyNA],
+       macaca_downmrna_meta = Metamrna$ID[Metamrna$MetaFDR < 0.01 & Metamrna$Metalog2FC < -0.20 & !Metamrna$manyNA],
+       macaca_upmet_meta = Metamet$ID[Metamet$MetaFDR < 0.01 & Metamet$Metalog2FC > 0.20 & !Metamet$manyNA],
+       macaca_downmet_meta = Metamet$ID[Metamet$MetaFDR < 0.01 & Metamet$Metalog2FC < -0.20 & !Metamet$manyNA]
+       
+                         )
+
+length(commonMols.filter$FDR005$macaca_upmrna_meta)
+length(commonMols.filter$FDR005$macaca_downmrna_meta)
+length(commonMols.filter$FDR005$macaca_uppro_meta)
+length(commonMols.filter$FDR005$macaca_downpro_meta)
+length(commonMols.filter$FDR005$macaca_upmet_meta)
+length(commonMols.filter$FDR005$macaca_downmet_meta)
+
+```
+
+
+## 6.2 Figure 2A common mrna
+```{r}
+tmpdata = Metamrna
+tmpdata$Pvalue = tmpdata$MetaFDR
+tmpdata$log2FC = tmpdata$Metalog2FC
+tmpdata$log2FC[tmpdata$Pvalue ==1 ] = 0
+#tmpdata$Pvalue[tmpdata$Pvalue < 1e-250] = 1e-250
+pdf('./out/20240709_aging/Figure2_DEG_GO_tissue/Figure_2A_vocano_common_mRNA.pdf')
+plot_DEflux(tmpdata[tmpdata$manyNA==FALSE,],xlab = "Mean log2 fold change (30 tissues)",FCcutoff = 0.2,
+            num.showlab = 5,alpha = 0.3,fixpointsize = 2,labSize = 6,
+            ylab = bquote(~-Log[10] ~ italic(FDR)))+xlim(c(-2,2))+ggtitle('Common changed transcripts across 30 tissues')+theme(axis.line = element_line(size = 1.0)) 
+dev.off()
+```
+## 6.3 Figure 2B common protein
+
+```{r}
+tmpdata = Metapro
+tmpdata$Pvalue = tmpdata$MetaFDR
+tmpdata$log2FC = tmpdata$Metalog2FC
+tmpdata$log2FC[tmpdata$Pvalue ==1 ] = 0
+#tmpdata$Pvalue[tmpdata$Pvalue < 1e-30] = 1e-30
+pdf('./out/20240709_aging/Figure2_DEG_GO_tissue/Figure_2B_vocano_common_pro.pdf')
+plot_DEflux(tmpdata[tmpdata$manyNA==FALSE,],xlab = "Mean log2 fold change (30 tissues)",FCcutoff = 0.2,
+            num.showlab = 5,alpha = 0.3,fixpointsize = 2,labSize = 6,
+            ylab = bquote(~-Log[10] ~ italic(FDR)))+xlim(c(-2,2))+ggtitle('Common changed transcripts across 30 tissues')+theme(axis.line = element_line(size = 1.0)) 
+dev.off()
+```
+
+## 6.4 Figure 2C vennon mrna pro
+
+```{r}
+pdf('./out/20240709_aging/Figure2_DEG_GO_tissue/Figure_2C_vennon_mrna_pro.pdf',width = 8)
+ggvenn::ggvenn(data = list(Up_pro = commonMols.filter$FDR005$macaca_uppro_meta,
+                        Up_mrna = commonMols.filter$FDR005$macaca_upmrna_meta,
+                        Down_mrna = commonMols.filter$FDR005$macaca_downmrna_meta,
+                        Down_pro = commonMols.filter$FDR005$macaca_downpro_meta),
+               fill_color = c("darkorchid1", "yellow","green","cornflowerblue"),
+               show_percentage = F,stroke_size = 0.5,stroke_alpha = 0.6,text_size = 9
+               )
+dev.off()
+
+pdf('./out/20240709_aging/Figure2_DEG_GO_tissue/Figure_SX_vennon_mrna_pro_fdr0.01.pdf',width = 8)
+ggvenn::ggvenn(data = list(Up_pro = commonMols.filter$FDR001$macaca_uppro_meta,
+                        Up_mrna = commonMols.filter$FDR001$macaca_upmrna_meta,
+                        Down_mrna = commonMols.filter$FDR001$macaca_downmrna_meta,
+                        Down_pro = commonMols.filter$FDR001$macaca_downpro_meta),
+               fill_color = c("darkorchid1", "yellow","green","cornflowerblue"),
+               show_percentage = F,stroke_size = 0.5,stroke_alpha = 0.6,text_size = 9
+               )
+dev.off()
+
+```
+
+
+## 6.5 Figure 2D heatmap mrna
+```{r}
+#mrna all
+mrnafc.common = Metamrna[Metamrna$MetaFDR < 0.05 & abs(Metamrna$Metalog2FC) > 0.2 & !Metamrna$manyNA, 
+                substr(colnames(Metamrna),1,7) == 'log2FC_']
+colnames(mrnafc.common) =gsub('log2FC_','',colnames(mrnafc.common))
+
+mrnapval.common = Metamrna[Metamrna$MetaFDR < 0.05 & abs(Metamrna$Metalog2FC) > 0.2 & !Metamrna$manyNA, 
+                substr(colnames(Metamrna),1,7) == 'Pvalue_']
+colnames(mrnapval.common) =gsub('Pvalue_','',colnames(mrnapval.common))
+
+mrnafc.common[is.na(mrnafc.common)] = 0
+mrnapval.common[is.na(mrnapval.common)] = 1
+
+
+
+
+#enbrks<-2*c(-1,-0.8,-0.4,-0.2,-0.05,-0.02,0.02,0.05,0.2,0.4,0.8,1)
+enbrks<-2*c(-1,-0.8,-0.4,-0.2,-0.1,-0.05,0.05,0.1,0.2,0.4,0.8,1)
+
+cname = colnames(mrnafc.common)
+
+
+tclass = data.frame(System = tissue.systems[cname],row.names = cname)
+mrnafc.common.v = mrnafc.common
+mrnafc.common.v[mrnafc.common.v > 2] =2
+mrnafc.common.v[mrnafc.common.v < -2] = -2
+
+ann_colors = list(
+  System = tissue.color)
+
+
+heatmap_mrna = pheatmap::pheatmap(mrnafc.common.v,scale = 'none',cluster_rows = T,show_rownames = F,cluster_cols = T,show_colnames = F,
+                   fontsize_row = 12,fontsize_col = 11,
+                   annotation_col = tclass, 
+                   annotation_colors = ann_colors,
+                       breaks = enbrks,
+                       angle_col= 45,clustering_method = "ward.D2", 
+                       treeheight_row = 20,treeheight_col = 20,legend = T,
+                       #display_numbers = display_matrix,
+                  #color=colorRampPalette(c('#3B4992','gray95','#BB0021'))(9),
+                       #colorRampPalette(c('#008280','gray95','#BB0021'))(11),
+                  #color=colorRampPalette(c('blue','gray95','#E64B35FF'))(11),
+                color=colorRampPalette(c('#4DBBD5FF','gray95','#E64B35FF'))(11),
+                #color=colorRampPalette(c("#3C5488FF",'gray99','#E64B35FF'))(11),
+               #color=colorRampPalette(c('#008280FF','gray99','#E64B35FF'))(11),
+                file ='./out/20240709_aging/Figure2_DEG_GO_tissue/Figure_2D_mrna_heatmap.pdf',
+                  height = 4,width = 4)
+```
+
+## 6.6 Figure 2E heatmap protein
+
+```{r}
+profc.common = Metapro[Metapro$MetaFDR < 0.05 & abs(Metapro$Metalog2FC) > 0.2 & !Metapro$manyNA,
+                substr(colnames(Metapro),1,7) == 'log2FC_']
+colnames(profc.common) =gsub('log2FC_','',colnames(profc.common))
+
+propval.common = Metapro[Metapro$MetaFDR < 0.05 & abs(Metapro$Metalog2FC) > 0.2 & !Metapro$manyNA,
+                substr(colnames(Metapro),1,7) == 'Pvalue_']
+colnames(propval.common) =gsub('Pvalue_','',colnames(propval.common))
+
+enbrks<-2*c(-1,-0.8,-0.4,-0.2,-0.1,-0.05,0.05,0.1,0.2,0.4,0.8,1)
+
+cname = colnames(profc.common)
+
+
+tclass = data.frame(System = tissue.systems[cname],row.names = cname)
+profc.common.v = profc.common
+profc.common.v[profc.common.v > 2] =2
+profc.common.v[profc.common.v < -2] = -2
+
+
+heapmap_protein = pheatmap::pheatmap(profc.common.v,scale = 'none',show_rownames = F,cluster_rows = T,cluster_cols = T,show_colnames = F,
+                   fontsize_row = 8,fontsize_col = 11,
+                   annotation_col = tclass,
+                   annotation_colors = ann_colors,
+                    breaks = enbrks,
+                   clustering_method = "ward.D2", 
+                       angle_col= 45,
+                       treeheight_row = 20,treeheight_col = 20,legend = T,
+                       #display_numbers = display_matrix,
+                  #color=colorRampPalette(c('#3B4992','gray95','#BB0021'))(9),
+                       #colorRampPalette(c('#008280','gray95','#BB0021'))(11),
+                  #c('#3B4992','gray99','#EE0000FF')
+                #color=colorRampPalette(c('#3B4992FF','gray95','#EE0000FF'))(50),
+              color=colorRampPalette(c('#4DBBD5FF','gray95','#E64B35FF'))(11),
+                file ='./out/20240709_aging/Figure2_DEG_GO_tissue/Figure_2E_protein_heatmap.pdf.pdf',
+                  height = 4,width = 4)
+```
+
+## 6.7 Figure 2F mrna & pro heatmap
+### 6.7.1 FDR0.01
+
+```{r}
+common_up = intersect(commonMols.filter$FDR001$macaca_uppro_meta,
+                      commonMols.filter$FDR001$macaca_upmrna_meta)
+common_down = intersect(commonMols.filter$FDR001$macaca_downmrna_meta,
+                        commonMols.filter$FDR001$macaca_downpro_meta)
+common_all = c(common_up,common_down)
+```
+
+
+```{r}
+#mRNA
+tissue.systems.v = sort(tissue.systems[names(pro.tissues)])
+
+mrnafc.common = Metamrna[is.element(Metamrna$ID,common_all) & Metamrna$MetaFDR < 0.01, 
+                substr(colnames(Metamrna),1,7) == 'log2FC_']
+colnames(mrnafc.common) =gsub('log2FC_','',colnames(mrnafc.common))
+
+mrnapval.common = Metamrna[is.element(Metamrna$ID,common_all) & Metamrna$MetaFDR < 0.01, 
+                substr(colnames(Metamrna),1,7) == 'Pvalue_']
+colnames(mrnapval.common) =gsub('Pvalue_','',colnames(mrnapval.common))
+
+mrnafc.common = mrnafc.common[,names(tissue.systems.v)]
+
+mrnapval.common = mrnapval.common[rownames(mrnafc.common),colnames(mrnafc.common)]
+
+#
+display_matrix = matrix(' ',nrow(mrnapval.common),ncol(mrnapval.common))
+display_matrix[mrnapval.common < 0.1] = '.'
+display_matrix[mrnapval.common >= 0.01 & mrnapval.common < 0.05] = '*'
+display_matrix[mrnapval.common >= 0.001 & mrnapval.common < 0.01] = '**'
+display_matrix[mrnapval.common < 0.001] = '***'
+
+#enbrks<-c(-1,-0.8,-0.4,-0.2,-0.05,-0.02,0.02,0.05,0.2,0.4,0.8,1)
+enbrks<-2*c(-1,-0.8,-0.4,-0.2,-0.1,-0.05,0.05,0.1,0.2,0.4,0.8,1)
+#DAscore.all_1 = DAscore.all
+#DAscore.all_1[DAscore.all_1 == 0] = NA
+
+cname = colnames(mrnafc.common)
+
+tclass = data.frame(System = tissue.systems[cname],row.names = cname)
+mrnafc.common.v = mrnafc.common
+mrnafc.common.v[mrnafc.common.v > 2] =2
+mrnafc.common.v[mrnafc.common.v < -2] = -2
+
+ann_colors = list(
+  System = tissue.color)
+
+heatmap_mrna = pheatmap::pheatmap(mrnafc.common.v,scale = 'none',cluster_rows = T,cluster_cols = F,annotation_colors = ann_colors,
+                   fontsize_row = 11,fontsize_col = 11,
+                   annotation_col = tclass, 
+                       breaks = enbrks,
+                       angle_col= 45,
+                       treeheight_row = 20,treeheight_col = 20,legend = T,
+                       display_numbers = display_matrix,
+                  #color=colorRampPalette(c('#3B4992','gray95','#BB0021'))(9),
+                       #colorRampPalette(c('#008280','gray95','#BB0021'))(11),
+                #color=colorRampPalette(c('#4DBBD5FF','gray95','#E64B35FF'))(11),
+                color=colorRampPalette(c('#4DBBD5FF','gray95','#E64B35FF'))(11),
+                #color=colorRampPalette(c('#3B4992','gray99','#EE0000'))(11),
+               #color=colorRampPalette(c('#008280FF','gray99','#E64B35FF'))(11),
+                file ='./out/20240709_aging/Figure2_DEG_GO_tissue/Figure_2F_mrna_nocluster_col_FDR0.01.pdf',
+                  height = 6,width = 9.5)
+
+mrna_order = rownames(mrnafc.common.v)[heatmap_mrna$tree_row$order]
+
+```
+
+
+```{r}
+#protein
+profc.common = Metapro[is.element(Metapro$ID,common_all) & Metapro$MetaFDR < 0.01, 
+                substr(colnames(Metapro),1,7) == 'log2FC_']
+colnames(profc.common) =gsub('log2FC_','',colnames(profc.common))
+
+propval.common = Metapro[is.element(Metapro$ID,common_all) & Metapro$MetaFDR < 0.01, 
+                substr(colnames(Metapro),1,7) == 'Pvalue_']
+colnames(propval.common) =gsub('Pvalue_','',colnames(propval.common))
+
+
+profc.common = profc.common[mrna_order,names(tissue.systems.v)]
+propval.common = propval.common[rownames(profc.common),colnames(profc.common)]
+
+#
+display_matrix = matrix(' ',nrow(propval.common),ncol(propval.common))
+display_matrix[propval.common < 0.1] = '.'
+display_matrix[propval.common >= 0.01 & propval.common < 0.05] = '*'
+display_matrix[propval.common >= 0.001 & propval.common < 0.01] = '**'
+display_matrix[propval.common < 0.001] = '***'
+
+enbrks<-2*c(-1,-0.8,-0.4,-0.2,-0.1,-0.05,0.05,0.1,0.2,0.4,0.8,1)
+#DAscore.all_1 = DAscore.all
+#DAscore.all_1[DAscore.all_1 == 0] = NA
+
+cname = colnames(profc.common)
+
+
+tclass = data.frame(System = tissue.systems[cname],stringsAsFactors = F,row.names = cname)
+profc.common.v = profc.common
+profc.common.v[profc.common.v > 2] =2
+profc.common.v[profc.common.v < -2] = -2
+
+
+heapmap_protein = pheatmap::pheatmap(profc.common.v,scale = 'none',cluster_rows = F,cluster_cols = F,
+                   fontsize_row = 11,fontsize_col = 11,legend_labels = 'log2FC',
+                   annotation_col = tclass, 
+                   annotation_colors = ann_colors,
+                       breaks = enbrks,
+                       angle_col= 45,
+                       treeheight_row = 20,treeheight_col = 20,legend = T,
+                       display_numbers = display_matrix,
+                  #color=colorRampPalette(c('#3B4992','gray95','#BB0021'))(9),
+                       #colorRampPalette(c('#008280','gray95','#BB0021'))(11),
+                 # c('#3B4992','gray99','#EE0000')
+                color=colorRampPalette(c('#4DBBD5FF','gray95','#E64B35FF'))(11),
+               #color=colorRampPalette(c('#3B4992','gray99','#EE0000'))(11),
+                file ='./out/20240709_aging/Figure2_DEG_GO_tissue/Figure_2F_proteins_notclusterrow_col_FDR0.01.pdf',
+                  height = 6,width = 9.2)
+
+```
+
+### 6.7.2 FDR 0.05
+```{r}
+common_up = intersect(commonMols.filter$FDR005$macaca_uppro_meta,
+                      commonMols.filter$FDR005$macaca_upmrna_meta)
+common_down = intersect(commonMols.filter$FDR005$macaca_downmrna_meta,
+                        commonMols.filter$FDR005$macaca_downpro_meta)
+common_all = c(common_up,common_down)
+
+```
+
+```{r}
+#mRNA
+tissue.systems.v = sort(tissue.systems[names(pro.tissues)])
+
+mrnafc.common = Metamrna[is.element(Metamrna$ID,common_all) & Metamrna$MetaFDR < 0.05, 
+                substr(colnames(Metamrna),1,7) == 'log2FC_']
+colnames(mrnafc.common) =gsub('log2FC_','',colnames(mrnafc.common))
+
+mrnapval.common = Metamrna[is.element(Metamrna$ID,common_all) & Metamrna$MetaFDR < 0.05, 
+                substr(colnames(Metamrna),1,7) == 'Pvalue_']
+colnames(mrnapval.common) =gsub('Pvalue_','',colnames(mrnapval.common))
+
+mrnafc.common = mrnafc.common[,names(tissue.systems.v)]
+
+mrnapval.common = mrnapval.common[rownames(mrnafc.common),colnames(mrnafc.common)]
+
+#
+display_matrix = matrix(' ',nrow(mrnapval.common),ncol(mrnapval.common))
+display_matrix[mrnapval.common < 0.1] = '.'
+display_matrix[mrnapval.common >= 0.01 & mrnapval.common < 0.05] = '*'
+display_matrix[mrnapval.common >= 0.001 & mrnapval.common < 0.01] = '**'
+display_matrix[mrnapval.common < 0.001] = '***'
+
+#enbrks<-c(-1,-0.8,-0.4,-0.2,-0.05,-0.02,0.02,0.05,0.2,0.4,0.8,1)
+enbrks<-2*c(-1,-0.8,-0.4,-0.2,-0.1,-0.05,0.05,0.1,0.2,0.4,0.8,1)
+#DAscore.all_1 = DAscore.all
+#DAscore.all_1[DAscore.all_1 == 0] = NA
+
+cname = colnames(mrnafc.common)
+
+tclass = data.frame(System = tissue.systems[cname],row.names = cname)
+mrnafc.common.v = mrnafc.common
+mrnafc.common.v[mrnafc.common.v > 2] =2
+mrnafc.common.v[mrnafc.common.v < -2] = -2
+
+ann_colors = list(
+  System = tissue.color)
+
+heatmap_mrna = pheatmap::pheatmap(mrnafc.common.v,scale = 'none',cluster_rows = T,cluster_cols = F,annotation_colors = ann_colors,
+                      clustering_method = 'ward.D2',
+                   fontsize_row = 11,fontsize_col = 11,
+                   annotation_col = tclass, 
+                       breaks = enbrks,
+                       angle_col= 45,
+                       treeheight_row = 20,treeheight_col = 20,legend = T,
+                       display_numbers = display_matrix,
+                  #color=colorRampPalette(c('#3B4992','gray95','#BB0021'))(9),
+                       #colorRampPalette(c('#008280','gray95','#BB0021'))(11),
+                #color=colorRampPalette(c('#4DBBD5FF','gray95','#E64B35FF'))(11),
+                color=colorRampPalette(c('#4DBBD5FF','gray95','#E64B35FF'))(11),
+                #color=colorRampPalette(c('#3B4992','gray99','#EE0000'))(11),
+               #color=colorRampPalette(c('#008280FF','gray99','#E64B35FF'))(11),
+                file ='./out/20240709_aging/Figure2_DEG_GO_tissue/Figure_2F_mrna_nocluster_col_FDR0.05.pdf',
+                  height = 10,width = 9.5)
+
+mrna_order = rownames(mrnafc.common.v)[heatmap_mrna$tree_row$order]
+```
+
+```{r}
+#protein
+profc.common = Metapro[is.element(Metapro$ID,common_all) & Metapro$MetaFDR < 0.05, 
+                substr(colnames(Metapro),1,7) == 'log2FC_']
+colnames(profc.common) =gsub('log2FC_','',colnames(profc.common))
+
+propval.common = Metapro[is.element(Metapro$ID,common_all) & Metapro$MetaFDR < 0.05, 
+                substr(colnames(Metapro),1,7) == 'Pvalue_']
+colnames(propval.common) =gsub('Pvalue_','',colnames(propval.common))
+
+
+profc.common = profc.common[mrna_order,names(tissue.systems.v)]
+propval.common = propval.common[rownames(profc.common),colnames(profc.common)]
+
+#
+display_matrix = matrix(' ',nrow(propval.common),ncol(propval.common))
+display_matrix[propval.common < 0.1] = '.'
+display_matrix[propval.common >= 0.01 & propval.common < 0.05] = '*'
+display_matrix[propval.common >= 0.001 & propval.common < 0.01] = '**'
+display_matrix[propval.common < 0.001] = '***'
+
+enbrks<-2*c(-1,-0.8,-0.4,-0.2,-0.1,-0.05,0.05,0.1,0.2,0.4,0.8,1)
+#DAscore.all_1 = DAscore.all
+#DAscore.all_1[DAscore.all_1 == 0] = NA
+
+cname = colnames(profc.common)
+
+
+tclass = data.frame(System = tissue.systems[cname],stringsAsFactors = F,row.names = cname)
+profc.common.v = profc.common
+profc.common.v[profc.common.v > 2] =2
+profc.common.v[profc.common.v < -2] = -2
+
+
+heapmap_protein = pheatmap::pheatmap(profc.common.v,scale = 'none',cluster_rows = F,cluster_cols = F,clustering_method = 'ward.D2',
+                   fontsize_row = 11,fontsize_col = 11,legend_labels = 'log2FC',
+                   annotation_col = tclass, 
+                   annotation_colors = ann_colors,
+                       breaks = enbrks,
+                       angle_col= 45,
+                       treeheight_row = 20,treeheight_col = 20,legend = T,
+                       display_numbers = display_matrix,
+                  #color=colorRampPalette(c('#3B4992','gray95','#BB0021'))(9),
+                       #colorRampPalette(c('#008280','gray95','#BB0021'))(11),
+                 # c('#3B4992','gray99','#EE0000')
+                color=colorRampPalette(c('#4DBBD5FF','gray95','#E64B35FF'))(11),
+               #color=colorRampPalette(c('#3B4992','gray99','#EE0000'))(11),
+                file ='./out/20240709_aging/Figure2_DEG_GO_tissue/Figure_2F_proteins_notclusterrow_col_FDR0.05.pdf',
+                  height = 10,width = 9.2)
+
+```
+
+
+
+# 7 Figure 3 common aging metabolites
+
+## 7.1 Figure 3A vocano mets
+
+```{r}
+# metabolites
+
+tmpdata = Metamet
+tmpdata$Pvalue = tmpdata$MetaFDR
+tmpdata$log2FC = tmpdata$Metalog2FC
+tmpdata$log2FC[tmpdata$Pvalue ==1 ] = 0
+#tmpdata$Pvalue[tmpdata$Pvalue < 1e-30] = 1e-30
+
+sortname = rownames(tmpdata)
+sortname = gsub("N-Acetyl-α-D-glucosamine 1-phosphate","GlcNAc-1-phosphate",sortname)
+sortname = gsub("Flavin mononucleotide \\(FMN\\)","Flavin mononucleotide",sortname)
+sortname = gsub("8Z,11Z,14Z-Eicosatrienoic acid","Eicosatrienoic acid",sortname)
+sortname = gsub("3-phenethyl-2-thioxoimidazolidin-4-one","Pth-glycine",sortname)
+sortname = gsub("2-\\(1,3-dimethyl-1H-pyrazol-5-yl\\)-1H-isoindole-1,3\\(2H\\)-dione","CHEMBL1705433",sortname)
+sortname = gsub("3,4-dihydro-2H-benzo\\[4,5\\]imidazo\\[2,1-b\\]\\[1,3\\]thiazin-3-ol","CHEMBL1462561",sortname)
+sortname = gsub("1-\\[4-\\(1-adamantyl\\)phenoxy\\]-3-piperidinopropan-2-ol\\s+hydrochloride","CAS175136-32-0",sortname)
+sortname = gsub("2-\\[4-\\(tert-butyl\\)-2,3-dihydro-1,3-thiazol-2-yliden]-3-oxobutanenitrile","CB81536810",sortname)
+sortname = gsub("3,4-Dihydroxyphenylpropionic acid","Dihydrocaffeic acid",sortname)
+rownames(tmpdata) = sortname
+tmpdata$ID = sortname
+
+
+
+pdf('./out/20240709_aging/Figure3_DEG_mets/Figure_3A_vocano_common_metabolites.pdf')
+plot_DEflux(tmpdata[tmpdata$manyNA == FALSE,],FCcutoff = 0.2, xlab = "Mean log2 fold change (30 tissues)",num.showlab = 5,alpha = 0.3,fixpointsize = 3,labSize = 6,
+            ylab = bquote(~-Log[10] ~ italic(FDR)))+xlim(c(-3,3))+ggtitle('Common changed metabolites across 30 tissues')
+dev.off()
+```
+
+## 7.2 Figure 3B heatmap mets
+```{r}
+#met0.05
+commonmet = c(commonMols.filter$FDR005$macaca_upmet_meta,commonMols.filter$FDR005$macaca_downmet_meta)
+tissue.systems.v = sort(tissue.systems[names(pro.tissues)])
+
+metfc.common = Metamet[is.element(Metamet$ID,commonmet) & Metamet$MetaFDR < 0.05, 
+                substr(colnames(Metamet),1,7) == 'log2FC_']
+colnames(metfc.common) =gsub('log2FC_','',colnames(metfc.common))
+
+metpval.common = Metamet[is.element(Metamet$ID,commonmet) & Metamet$MetaFDR < 0.05, 
+                substr(colnames(Metamet),1,7) == 'Pvalue_']
+colnames(metpval.common) =gsub('Pvalue_','',colnames(metpval.common))
+
+metfc.common = metfc.common[,names(tissue.systems.v)]
+
+metpval.common = metpval.common[rownames(metfc.common),colnames(metpval.common)]
+
+#
+display_matrix = matrix(' ',nrow(metpval.common),ncol(metpval.common))
+display_matrix[metpval.common < 0.1] = '.'
+display_matrix[metpval.common >= 0.01 & metpval.common < 0.05] = '*'
+display_matrix[metpval.common >= 0.001 & metpval.common < 0.01] = '**'
+display_matrix[metpval.common < 0.001] = '***'
+
+enbrks <- 2*c(-1,-0.8,-0.4,-0.2,-0.05,-0.02,0.02,0.05,0.2,0.4,0.8,1)
+#DAscore.all_1 = DAscore.all
+#DAscore.all_1[DAscore.all_1 == 0] = NA
+
+cname = colnames(metfc.common)
+
+
+tclass = data.frame(System = tissue.systems[cname],row.names = cname)
+metfc.common.v = metfc.common
+metfc.common.v[metfc.common.v > 2] =2
+metfc.common.v[metfc.common.v < -2] = -2
+
+sortname = rownames(metfc.common.v)
+sortname = gsub("N-Acetyl-α-D-glucosamine 1-phosphate","GlcNAc-1-phosphate",sortname)
+sortname = gsub("Flavin mononucleotide \\(FMN\\)","Flavin mononucleotide",sortname)
+sortname = gsub("8Z,11Z,14Z-Eicosatrienoic acid","Eicosatrienoic acid",sortname)
+sortname = gsub("3-phenethyl-2-thioxoimidazolidin-4-one","Pth-glycine",sortname)
+sortname = gsub("2-\\(1,3-dimethyl-1H-pyrazol-5-yl\\)-1H-isoindole-1,3\\(2H\\)-dione","CHEMBL1705433",sortname)
+sortname = gsub("3,4-dihydro-2H-benzo\\[4,5\\]imidazo\\[2,1-b\\]\\[1,3\\]thiazin-3-ol","CHEMBL1462561",sortname)
+sortname = gsub("1-\\[4-\\(1-adamantyl\\)phenoxy\\]-3-piperidinopropan-2-ol\\s+hydrochloride","CAS175136-32-0",sortname)
+sortname = gsub("2-\\[4-\\(tert-butyl\\)-2,3-dihydro-1,3-thiazol-2-yliden]-3-oxobutanenitrile","CB81536810",sortname)
+sortname = gsub("3,4-Dihydroxyphenylpropionic acid","Dihydrocaffeic acid",sortname)
+sortname = gsub("4,4'-dimethoxy\\[1,1'-biphenyl\\]-2-carbonitrile","2-Cyano-4,4'-dimethoxybiphenyl",sortname)
+rownames(metfc.common.v) = sortname
+
+
+pheatmap::pheatmap(metfc.common.v,scale = 'none',cluster_rows = T,cluster_cols = F,
+                   fontsize_row = 9,fontsize_col = 10,
+                   annotation_col = tclass,
+                   annotation_colors = ann_colors,
+                       breaks = enbrks,
+                       angle_col= 45,
+                       treeheight_row = 20,treeheight_col = 20,legend = T,
+                       display_numbers = display_matrix,
+                  #color=colorRampPalette(c('#3B4992','gray95','#BB0021'))(9),
+                       #colorRampPalette(c('#008280','gray95','#BB0021'))(11),
+                color=colorRampPalette(c('#4DBBD5FF','gray95','#E64B35FF'))(11),
+               #color=colorRampPalette(c('#008280FF','gray99','#E64B35FF'))(11),
+                file ='./out/20240709_aging/Figure3_DEG_mets/Figure_3B_fc_met_nocluster_col_FDR005.pdf',
+                  height = 7,width = 13)
+```
+
+
+```{r}
+#met
+commonmet = c(commonMols.filter$FDR001$macaca_upmet_meta,commonMols.filter$FDR001$macaca_downmet_meta)
+tissue.systems.v = sort(tissue.systems[names(pro.tissues)])
+
+metfc.common = Metamet[is.element(Metamet$ID,commonmet) & Metamet$MetaFDR < 0.01, 
+                substr(colnames(Metamet),1,7) == 'log2FC_']
+colnames(metfc.common) =gsub('log2FC_','',colnames(metfc.common))
+
+metpval.common = Metamet[is.element(Metamet$ID,commonmet) & Metamet$MetaFDR < 0.01, 
+                substr(colnames(Metamet),1,7) == 'Pvalue_']
+colnames(metpval.common) =gsub('Pvalue_','',colnames(metpval.common))
+
+metfc.common = metfc.common[,names(tissue.systems.v)]
+
+metpval.common = metpval.common[rownames(metfc.common),colnames(metpval.common)]
+
+#
+display_matrix = matrix(' ',nrow(metpval.common),ncol(metpval.common))
+display_matrix[metpval.common < 0.1] = '.'
+display_matrix[metpval.common >= 0.01 & metpval.common < 0.05] = '*'
+display_matrix[metpval.common >= 0.001 & metpval.common < 0.01] = '**'
+display_matrix[metpval.common < 0.001] = '***'
+
+enbrks <- 2*c(-1,-0.8,-0.4,-0.2,-0.05,-0.02,0.02,0.05,0.2,0.4,0.8,1)
+#DAscore.all_1 = DAscore.all
+#DAscore.all_1[DAscore.all_1 == 0] = NA
+
+cname = colnames(metfc.common)
+
+
+tclass = data.frame(System = tissue.systems[cname],row.names = cname)
+metfc.common.v = metfc.common
+metfc.common.v[metfc.common.v > 2] =2
+metfc.common.v[metfc.common.v < -2] = -2
+
+sortname = rownames(metfc.common.v)
+sortname = gsub("N-Acetyl-α-D-glucosamine 1-phosphate","GlcNAc-1-phosphate",sortname)
+sortname = gsub("Flavin mononucleotide \\(FMN\\)","Flavin mononucleotide",sortname)
+sortname = gsub("8Z,11Z,14Z-Eicosatrienoic acid","Eicosatrienoic acid",sortname)
+sortname = gsub("3-phenethyl-2-thioxoimidazolidin-4-one","Pth-glycine",sortname)
+sortname = gsub("2-\\(1,3-dimethyl-1H-pyrazol-5-yl\\)-1H-isoindole-1,3\\(2H\\)-dione","CHEMBL1705433",sortname)
+sortname = gsub("3,4-dihydro-2H-benzo\\[4,5\\]imidazo\\[2,1-b\\]\\[1,3\\]thiazin-3-ol","CHEMBL1462561",sortname)
+sortname = gsub("1-\\[4-\\(1-adamantyl\\)phenoxy\\]-3-piperidinopropan-2-ol\\s+hydrochloride","CAS175136-32-0",sortname)
+sortname = gsub("2-\\[4-\\(tert-butyl\\)-2,3-dihydro-1,3-thiazol-2-yliden]-3-oxobutanenitrile","CB81536810",sortname)
+sortname = gsub("3,4-Dihydroxyphenylpropionic acid","Dihydrocaffeic acid",sortname)
+rownames(metfc.common.v) = sortname
+
+
+pheatmap::pheatmap(metfc.common.v,scale = 'none',cluster_rows = T,cluster_cols = F,
+                   fontsize_row = 9,fontsize_col = 10,
+                   annotation_col = tclass,
+                   annotation_colors = ann_colors,
+                       breaks = enbrks,
+                       angle_col= 45,
+                       treeheight_row = 20,treeheight_col = 20,legend = T,
+                       display_numbers = display_matrix,
+                  #color=colorRampPalette(c('#3B4992','gray95','#BB0021'))(9),
+                       #colorRampPalette(c('#008280','gray95','#BB0021'))(11),
+                color=colorRampPalette(c('#4DBBD5FF','gray95','#E64B35FF'))(11),
+               #color=colorRampPalette(c('#008280FF','gray99','#E64B35FF'))(11),
+                file ='./out/20240709_aging/Figure3_DEG_mets/Figure_3B_fc_met_nocluster_col_FDR001.pdf',
+                  height = 6,width = 9)
+```
+
+## 7.3 Figure 3C TS related protein
+```{r}
+teron = list()
+for(i in 1:length(met.tissues)){
+  teron[[i]] = met.tissues[[i]]['Testosterone sulfate',]
+}
+names(teron) = names(met.tissues)
+
+
+#get_correlation protein
+corTeron2pro = get_corr(teron,pro.tissues.v)
+corTeron2pro.Pvalue = str2num(list_element_select(corTeron2pro,rownames(Metapro),'Pvalue'))
+corTeron2pro.cor = str2num(list_element_select(corTeron2pro,rownames(Metapro),'cor'))
+corTeron2pro.Pvalue[is.na(corTeron2pro.Pvalue)] =1
+
+x<-list(p=corTeron2pro.Pvalue)
+xx.pro = MetaDE.pvalue(x = x,meta.method = 'AW') 
+tmpdata = data.frame(ID = rownames(corTeron2pro.Pvalue),
+                     log2FC = rowMeans(corTeron2pro.cor,na.rm = T),
+                     Pvalue = as.vector(xx.pro$meta.analysis$FDR))
+#tmpdata = del_duplicate_rows_forpro(tmpdata,pro.whole.nofilter.header)
+#tmpdata$ID = tmpdata$gene
+rownames(tmpdata) = tmpdata$ID
+
+tmpdata$Pvalue[tmpdata$Pvalue < 1e-30] = 1e-30
+pdf('./out/20240709_aging/Figure3_DEG_mets/Figure_3C_Tesosteron_vs_pro_cor.pdf')
+plot_DEflux(tmpdata,alpha = 0.5,num.showlab = 8,xlab = bquote("Correlation(mean 30 tissues)"),
+            ylab = bquote(~-Log[10] ~ italic('FDR(meta analysis)')),
+            title = 'Testosterone sulfate related proteins')+xlim(c(-1.01,1.01))
+dev.off()
+sum(tmpdata$Pvalue < 0.05)
+sum(tmpdata$Pvalue < 0.05 & tmpdata$log2FC > 0)
+```
+
+```{r}
+load('./out/20240513_aging/Figure6_differ_types/Metacorrlation_met2pro/Met2proAll_usesnow.Rdata')
+
+```
+
+```{r}
+vmets = Metamet$ID[Metamet$manyNA == FALSE]
+
+Met2proAll.filtered = Met2proAll
+met2pro_num = data.frame(ID = vmets,
+                         pos = rep(0,length(vmets)),
+                         neg = rep(0,length(vmets)),
+                         all = rep(0,length(vmets)),
+                         row.names = vmets)
+for(i in 1:length(vmets)){
+  tmpaa = Met2proAll[[vmets[i]]]
+  tmpaa$Met = rep(vmets[i],nrow(tmpaa))
+  tmpaa$DEfc = Metapro[tmpaa$ID,]$Metalog2FC
+  tmpaa$DEpvalue = Metapro[tmpaa$ID,]$MetaFDR
+  tmpaa$manyNA = Metapro[tmpaa$ID,]$manyNA
+  tmpaa.v = tmpaa[tmpaa$corrFDR < 0.05 & tmpaa$manyNA == FALSE,]
+  Met2proAll.filtered[[i]] = tmpaa.v
+  idx = sign(tmpaa.v$MetaCorrelation*tmpaa.v$DEfc) < 0
+  tmpaa.v = tmpaa.v[idx,]
+  met2pro_num$pos[i] = sum(tmpaa.v$MetaCorrelation > 0)
+  met2pro_num$neg[i] = sum(tmpaa.v$MetaCorrelation < 0)
+  met2pro_num$all[i] = nrow(tmpaa.v)
+}
+
+met2pro_num$DEfc = Metamet[met2pro_num$ID,]$Metalog2FC
+met2pro_num$DEFDR = Metamet[met2pro_num$ID,]$MetaFDR
+
+met2pro_num$DEFDR[met2pro_num$DEFDR < 1e-10] = 1e-10
+met2pro_num$pointSize = abs(log10(met2pro_num$DEFDR))*4 
+met2pro_num$label = met2pro_num$ID
+met2pro_num$label[met2pro_num$DEFDR >= 0.05] = NA
+
+keyvals <- rep("NS", nrow(met2pro_num))
+#names(keyvals) <- rep("NS", nrow(met2pro_num))
+
+keyvals[met2pro_num$DEfc > 0 & met2pro_num$DEFDR < 0.05] <- "UP"
+#names(keyvals)[met2pro_num$AgingI_FC > 0 & met2pro_num$AgingI_FDR < 0.05] <- "UP"
+
+keyvals[met2pro_num$DEfc < 0 & met2pro_num$DEFDR < 0.05] <- "Down"
+#names(keyvals)[met2pro_num$AgingI_FC < 0 & met2pro_num$AgingI_FDR < 0.05] <- "Down"
+
+met2pro_num$Significance =  factor(x = keyvals,levels = c('Down','NS','UP'))
+
+
+mycolors = c("NS" = "gray50", "UP"="brown", "Down"="darkblue")
+#mycolors = c("brown","darkblue", "gray50")
+pdf("./out/20240709_aging/Figure3_DEG_mets/FigureS_Correlated_proteins_with_metabolites_vocano.pdf",width = 9, height = 7)
+ggplot(met2pro_num,aes(y = DEfc,x = all,label= label)) + 
+  geom_point(aes(color = Significance,size = pointSize),alpha = 0.9)+  
+  scale_color_manual(values=mycolors)+
+  lghplot.addtheme(legend.position = 'right')+ggrepel::geom_text_repel(size = 6)+
+  scale_x_continuous(trans = 'log10')+ ylim(-3,3)+
+  xlab("Number of correlated proteins(Log10)")+
+  ylab("Mean log2FC in 30 tissues") + ggtitle("Correlated proteins with metabolites")
+dev.off()
+```
+
+
+
+## 7.4 Figure 3D-3E
+
+```{r}
+## in cytoscape and metascape enrichment
+```
+
+# 8 Figure 4 trajactory and different types
+
+## 8.1 Figure 4a
+
+```{r}
+tissues = names(pro.tissues.v)
+promet.tissues = list()
+promet.tissues.info = list()
+promet.tissues.Z = list()
+mfuzz.promet.tissues = list()
+promet.mstd.eset = list()
+for(i in 1:length(tissues)){
+#for(i in 1:1){
+    tt = tissues[i]
+    thispro = pro.tissues.v[[tt]]
+    thispro = thispro[rowSums(is.na(thispro)) < 1/3*ncol(thispro), ]
+    thismet = met.tissues[[tt]]
+    rownames(thismet) = paste0('met_',rownames(thismet))
+    thispromet = rbind2(thispro,thismet)
+    thisinfo = pro.tissues.info[[tt]]
+    thisinfo = thisinfo[colnames(thispromet),]
+    thispromet.median = t(aggregate(t(thispromet), by=list(thisinfo$stage), 
+                                    FUN=median, na.rm = T))
+    mstd = standardise_matrix(thispromet.median)
+    promet.tissues.Z[[i]] = mstd
+    promet.tissues[[i]] = thispromet
+    promet.tissues.info[[i]] = thisinfo
+    mstd.v = mstd[rowSums(is.na(mstd))  == 0,]
+    mstd.eset = new("ExpressionSet",exprs = mstd.v)
+    promet.mstd.eset[[i]] = mstd.eset
+    mfuzz.promet.tissues[[i]] = mfuzz(mstd.eset, c = 8,m = 1.5)
+
+}
+names(mfuzz.promet.tissues) = tissues
+names(promet.tissues) = tissues
+names(promet.tissues.Z) = tissues
+names(promet.tissues.info) = tissues
+names(promet.mstd.eset) = tissues
+```
+
+```{r}
+#this is used to reproduce the figures in manuscript
+load('./out/promet_outdata.Rdata')
+
+```
+
+```{r}
+promet.whole.Z.v = promet.whole.Z[rowSums(is.na(promet.whole.Z)) < 0.5*120,]
+promet.whole.Z.mean = t(aggregate(t(promet.whole.Z.v), 
+                      by=list(promet.whole.Z.info$stage), FUN=mean, na.rm = T))
+promet.whole.Z.mean  =promet.whole.Z.mean[-1,]
+promet.whole.Z.mean.v = promet.whole.Z.mean[rowSums(is.na(promet.whole.Z.mean))  == 0,]
+promet.whole.Z.mean.eset = new("ExpressionSet",exprs = promet.whole.Z.mean.v)
+dim(promet.whole.Z.mean.v)
+sum(substr(rownames(promet.whole.Z.mean.v),1,4) == 'met_')
+#mfuzz.promet.whole = mfuzz(promet.norm.eset.stand, c = 8,m = 1.5)
+```
+```{r}
+pdf('./out/20240709_aging/Figure4_trajactory/Figure4A.pdf',width = 8,height = 4)
+mfuzz.plot(promet.whole.Z.mean.eset,mfuzz.promet.whole,mfrow=c(2,4),
+           time.labels = c("Juvenile", "Young_adult","Middle_aged",
+                                   "Elderly"),new.window = F)
+dev.off()
+
+```
+## 8.2 Figure 4B
+
+```{r}
+# construct data
+tissue_trajectory = data.frame()
+tissue_names = names(promet.tissues)
+for(k in 1:8){
+    tmpGeneList = names(mfuzz.promet.whole$cluster)[mfuzz.promet.whole$cluster == k]
+    for(i in 1:length(promet.tissues)){
+        
+        M1 = promet.tissues[[i]]
+        metadata.tissue = promet.tissues.info[[i]]
+        idgene1 = intersect(tmpGeneList,rownames(M1))
+        cc = repmat(as.matrix(rowMedians(M1[,metadata.tissue$stage == '1'],na.rm = T)),1,ncol(M1))
+        tsd = repmat(as.matrix(apply(M1,1,sd,na.rm = T)),1,ncol(M1))
+        
+        M1.Z = (M1 - cc)/tsd
+        M1.Z.v = M1.Z[idgene1,]
+        M1.Z.v.mean = t(aggregate(t(M1.Z.v), 
+                                  by=list(metadata.tissue$stage), FUN=median, na.rm = T))
+        M1.Z.v.mean = M1.Z.v.mean[-1,]
+        mean_x = colMeans(M1.Z.v.mean,na.rm  =T)
+        mean_x = mean_x - mean_x[1]
+        
+        tmpdata2 = data.frame(expr = mean_x,stringsAsFactors = F,
+                              stage = c(1,2,3,4),
+                              group = factor(c('Juvenile','Young','Middle_aged','Elderly'),
+                                     level = c('Juvenile','Young','Middle_aged','Elderly')),
+                              cluster = rep(k,4),
+                              tissue = rep(tissue_names[i],4)
+                     )
+        if (nrow(tissue_trajectory) <1){
+            tissue_trajectory = tmpdata2
+        }else{
+            tissue_trajectory = rbind(tissue_trajectory,tmpdata2)
+        }
+    }
+
+}
+
+```
+
+```{r}
+tissue_trajectory$tissue_system = tissue.systems[tissue_trajectory$tissue]
+tissue_trajectory$tissue_system_color = tissue.color[tissue_trajectory$tissue_system]
+# to matrix
+tissue_trajectory_matrix = matrix(0,nrow(tissue_trajectory)/length(tissue_names),length(tissue_names))
+for(i in 1:length(tissue_names)){
+    tmptr = tissue_trajectory[tissue_trajectory$tissue == tissue_names[i],]
+    tissue_trajectory_matrix[,i] = tmptr$expr
+}
+rownames(tissue_trajectory_matrix) = paste(tmptr$group,tmptr$cluster,sep = '_C')
+colnames(tissue_trajectory_matrix) = tissue_names
+```
+
+
+
+```{r}
+tissue_tr_plot = list()
+for (i in 1:8){
+    idx = tissue_trajectory$cluster == i
+    tissue_tr_plot [[i]] = ggplot(tissue_trajectory[idx,],
+                                  aes(x= group,y = expr,group  =tissue)) +
+        geom_line(aes(color = tissue_system),alpha = 0.3 ,
+                  position = position_dodge(0.2),size = 2)+ scale_color_aaas()+ 
+        lghplot.addtheme(hjust = 1,size = 14)+ ggtitle(paste0('Cluster ',i))+
+         theme(axis.line = element_line(size = 1.2))+ xlab('')+ ylab('')+
+        scale_y_continuous(labels = scales::comma_format(accuracy =0.1))
+}
+pdf(file = "./out/20240709_aging/Figure4_trajactory/Figure4B_trajectory_for_each_tissue_aaas.pdf",height = 9,width = 8)
+grid.arrange(arrangeGrob(grobs = tissue_tr_plot,ncol = 3,heights = c(4,4,4),
+            top = textGrob('Average molecular aging trajectory in 30 tissues',
+                           gp=gpar(fontface="bold",  fontsize=20)),
+            bottom=textGrob('Tissues', gp=gpar(fontface="bold",  fontsize=18)),
+            left = textGrob('Z values', gp=gpar(fontface="bold",  fontsize=18),rot=90)))
+dev.off()
+```
+
+## 8.3 Figure 4C heatmap clustering
+
+```{r}
+#heatmap cluster '#E64B35FF''#4DBBD5FF'
+idx = substr(rownames(tissue_trajectory_matrix),1,3) != 'Juv'
+dent = pheatmap::pheatmap(tissue_trajectory_matrix[idx,],scale = 'row',
+                    main = 'Heatmap of molecular aging trajectory in 30 tissues',
+                          height = 5,width = 6,angle_col = 45,             
+                          fontsize_row = 8,fontsize_col = 8,
+                          treeheight_row = 20,treeheight_col = 20,
+                          #color=colorRampPalette(c('#3B4992','gray95','red'))(30),
+                          file ="./out/20240709_aging/Figure4_trajactory/Figure4C_heatmap_based_trajectoryV1.pdf",
+                          color=colorRampPalette(c('#3C5488FF','gray95','#E64B35FF'))(30))
+```
+
+## 8.4 Figure 4D
+
+```{r}
+dendcol = as.dendrogram(dent$tree_col)
+
+labelColors = c('#3C5488FF','#E64B35FF')
+
+clusMember = cutree(dent$tree_col,2)
+
+# function to get color labels
+colLab <- function(n) {
+  if (is.leaf(n)) {
+    a <- attributes(n)
+    labCol <- labelColors[clusMember[which(names(clusMember) == a$label)]]
+    attr(n, "nodePar") <- c(a$nodePar, lab.col = labCol)
+  }
+  n
+}
+clusDendro = dendrapply(dendcol, colLab)
+
+dendcolsplit = cut(dendcol,12)
+class1 = unlist(cut(dendcol,12)$lower[[1]])
+class2 = unlist(cut(dendcol,12)$lower[[2]])
+tissueType = data.frame(tissue = c(tissue_names[class1],tissue_names[class2]),
+                        stringsAsFactors = F,
+              type = c(rep('Type II',length(class1)),rep('Type I',length(class2))))
+rownames(tissueType) = tissueType$tissue
+tissueType$class = tissueType$type
+
+pdf('./out/20240709_aging/Figure4_trajactory/FigureSX_dendrogamV1.pdf',width = 7,height = 5)
+plot(clusDendro, main = "Molecular trajactory dendgrogram")
+dev.off()
+
+
+```
+
+
+
+```{r}
+# pca
+tissue_pca = prcomp(t(tissue_trajectory_matrix),cor=F)
+perc_tissue_pca = 100*summary(tissue_pca)$importance
+tissue_names = names(promet.tissues)
+pdf('./out/20240709_aging/Figure4_trajactory/Figure4D_PCA.pdf',width = 7,height = 7)
+tmpType = tissueType[tissue_names,]$type
+ggplot(,aes(tissue_pca$x[,1],tissue_pca$x[,2],color = tmpType)) + 
+   geom_point(size =5,alpha = 0.6) + 
+   theme_classic() +lghplot.addtheme(legend.position = 'top')+  
+   #stat_ellipse(lwd=1,level = 0.95) +
+   geom_text_repel(aes(label = tissue_names),size = 5,box.padding = 0.5,face = 'bold')+
+   xlab(paste("PC1(",as.character(round(perc_tissue_pca[2,1],1)),'%)',sep = '')) + 
+   ylab(paste("PC2(",as.character(round(perc_tissue_pca[2,2],1)),'%)',sep = '')) + 
+   scale_color_manual(values = c('#E64B35FF','#3C5488FF'))+
+   theme(legend.text = element_text(size=12,face = 'bold'))+
+   labs(title = "Molecular trajectory PCA")
+dev.off()
+
+
+```
+
+
+
+
+
+# 9. Figure 5 differ tissue types
+
+## 9.1 meta differ tisses
+
+```{r}
+tmptissue = c('Muscle','Facial_skin','Pancreas','Adrenal_gland','Liver','Hypothalamus','Femoral_vein','Hippocampus','Frontal_pole','Superior_temporal_gyrus','Supramarginal_gyrus','Skin_of_back','Heart','Lung','Cecum','Adipose','Ileocecum','Thyroid_gland','Ovary','Fallopian_tube','Arteria_carotis','Stomach','Uterus','Pituitary','Kidney','Thymus','Duodenum','Aortic_arch','Arteria_cruralis','Spleen')
+undefine =c('Facial_skin','Femoral_vein','Arteria_cruralis','Arteria_carotis')
+tissueClass = data.frame(type = c(rep('Type_II',15),rep('Type_I',15)),stringsAsFactors = F,
+                         tissue = tmptissue,
+                         #color = tissue.color[tmptissue],
+                         system = tissue.systems.v[tmptissue])
+tissueClass$color = tissue.color[tissueClass$system]
+rownames(tissueClass) = tissueClass$tissue
+tissueClass$type[is.element(tissueClass$tissue,undefine)] = 'Undefined'
+
+```
+
+```{r}
+typeI_tisses = tissueClass$tissue[tissueClass$type == 'Type_I']
+#mrna
+Metapro.typeI = metaGene(pro.tissues.v[typeI_tisses],pro.tissues.info[typeI_tisses])
+#Metapro$gene = pro.whole.nofilter.header[rownames(Metapro),]$Gene
+writetxt(Metapro.typeI,'./out/20240709_aging/Figure5_differ_type/TypeI_Common_DEpro_from_metapro.txt')
+
+Metamrna.typeI = metaGene(mrna.tissues[typeI_tisses],mrna.tissues.info[typeI_tisses])
+writetxt(Metamrna.typeI,'./out/20240709_aging/Figure5_differ_type/TypeI_Common_DEmrna_from_metamrna.txt')
+
+Metamet.typeI = metaGene(met.tissues[typeI_tisses],met.tissues.info[typeI_tisses])
+writetxt(Metamet.typeI,'./out/20240709_aging/Figure5_differ_type/TypeI_Common_DEmet_from_metamet.txt')
+```
+
+```{r}
+typeII_tisses = tissueClass$tissue[tissueClass$type == 'Type_II']
+#mrna
+Metapro.typeII = metaGene(pro.tissues.v[typeII_tisses],pro.tissues.info[typeII_tisses])
+#Metapro$gene = pro.whole.nofilter.header[rownames(Metapro),]$Gene
+writetxt(Metapro.typeII,'./out/20240709_aging/Figure5_differ_type/TypeII_Common_DEpro_from_metapro.txt')
+
+Metamrna.typeII = metaGene(mrna.tissues[typeII_tisses],mrna.tissues.info[typeII_tisses])
+writetxt(Metamrna.typeII,'./out/20240709_aging/Figure5_differ_type/TypeII_Common_DEmrna_from_metamrna.txt')
+
+Metamet.typeII = metaGene(met.tissues[typeII_tisses],met.tissues.info[typeII_tisses])
+writetxt(Metamet.typeII,'./out/20240709_aging/Figure5_differ_type/TypeII_Common_DEmet_from_metamet.txt')
+```
+
+```{r}
+commonMols.filter$FDR005$macaca_upmrna_meta_typeI = 
+  Metamrna.typeI$ID[Metamrna.typeI$MetaFDR < 0.05 & Metamrna.typeI$Metalog2FC > 0.20]
+commonMols.filter$FDR005$macaca_upmrna_meta_typeII = 
+  Metamrna.typeII$ID[Metamrna.typeII$MetaFDR < 0.05 & Metamrna.typeII$Metalog2FC > 0.20]
+
+commonMols.filter$FDR005$macaca_downmrna_meta_typeI = 
+  Metamrna.typeI$ID[Metamrna.typeI$MetaFDR < 0.05 & Metamrna.typeI$Metalog2FC < -0.20]
+commonMols.filter$FDR005$macaca_downmrna_meta_typeII = 
+  Metamrna.typeII$ID[Metamrna.typeII$MetaFDR < 0.05 & Metamrna.typeII$Metalog2FC < -0.20]
+
+
+
+commonMols.filter$FDR005$macaca_uppro_meta_typeI = 
+  Metapro.typeI$ID[Metapro.typeI$MetaFDR < 0.05 & Metapro.typeI$Metalog2FC > 0.20]
+commonMols.filter$FDR005$macaca_uppro_meta_typeII = 
+  Metapro.typeII$ID[Metapro.typeII$MetaFDR < 0.05 & Metapro.typeII$Metalog2FC > 0.20]
+
+commonMols.filter$FDR005$macaca_downpro_meta_typeI = 
+  Metapro.typeI$ID[Metapro.typeI$MetaFDR < 0.05 & Metapro.typeI$Metalog2FC < -0.20]
+commonMols.filter$FDR005$macaca_downpro_meta_typeII = 
+  Metapro.typeII$ID[Metapro.typeII$MetaFDR < 0.05 & Metapro.typeII$Metalog2FC < -0.20]
+
+
+commonMols.filter$FDR005$macaca_upmet_meta_typeI = 
+  Metamet.typeI$ID[Metamet.typeI$MetaFDR < 0.05 & Metamet.typeI$Metalog2FC > 0.20]
+commonMols.filter$FDR005$macaca_upmet_meta_typeII = 
+  Metamet.typeII$ID[Metamet.typeII$MetaFDR < 0.05 & Metamet.typeII$Metalog2FC > 0.20]
+
+commonMols.filter$FDR005$macaca_downmet_meta_typeI = 
+  Metamet.typeI$ID[Metamet.typeI$MetaFDR < 0.05 & Metamet.typeI$Metalog2FC < -0.20]
+commonMols.filter$FDR005$macaca_downmet_meta_typeII = 
+  Metamet.typeII$ID[Metamet.typeII$MetaFDR < 0.05 & Metamet.typeII$Metalog2FC < -0.20]
+
+#write mrna
+
+tmp = data.frame(names = c('TypeI_up','TypeII_up','TypeI_down','TypeII_down'),stringsAsFactors = F,
+                 genes = c(paste0(commonMols.filter$FDR005$macaca_upmrna_meta_typeI,collapse = ','),
+                           paste0(commonMols.filter$FDR005$macaca_upmrna_meta_typeII,collapse = ','),
+                           paste0(commonMols.filter$FDR005$macaca_downmrna_meta_typeI,collapse = ','),
+                           paste0(commonMols.filter$FDR005$macaca_downmrna_meta_typeII,collapse = ','))
+                 )
+writetxt(tmp,'./out/20240709_aging/Figure5_differ_type/input_mrna_differtypes_metascape.txt',col.names = F)
+
+
+#write protein
+tmp = data.frame(names = c('TypeI_up','TypeII_up','TypeI_down','TypeII_down'),stringsAsFactors = F,
+                 genes = c(paste0(commonMols.filter$FDR005$macaca_uppro_meta_typeI,collapse = ','),
+                           paste0(commonMols.filter$FDR005$macaca_uppro_meta_typeII,collapse = ','),
+                           paste0(commonMols.filter$FDR005$macaca_downpro_meta_typeI,collapse = ','),
+                           paste0(commonMols.filter$FDR005$macaca_downpro_meta_typeII,collapse = ','))
+                 )
+writetxt(tmp,'./out/20240709_aging/Figure5_differ_type/input_pro_differtypes_metascape.txt',col.names = F)
+
+#write protein loose
+up1 = 
+  Metapro.typeI$ID[Metapro.typeI$MetaPvalue < 0.01 & Metapro.typeI$MetaFDR < 0.1 & Metapro.typeI$Metalog2FC > 0.2]
+up2 = 
+  Metapro.typeII$ID[Metapro.typeII$MetaPvalue < 0.01 & Metapro.typeII$MetaFDR < 0.1 & Metapro.typeII$Metalog2FC > 0.2]
+
+down1 = 
+  Metapro.typeI$ID[Metapro.typeI$MetaPvalue < 0.01 & Metapro.typeI$MetaFDR < 0.1 & Metapro.typeI$Metalog2FC < -0.2]
+down2 = 
+  Metapro.typeII$ID[Metapro.typeII$MetaPvalue < 0.01 & Metapro.typeII$MetaFDR < 0.05 & Metapro.typeII$Metalog2FC < -0.2]
+
+tmp = data.frame(names = c('TypeI_up','TypeII_up','TypeI_down','TypeII_down'), stringsAsFactors = F,
+                 genes = c(paste0(up1,collapse = ','),
+                           paste0(up2,collapse = ','),
+                           paste0(down1,collapse = ','),
+                           paste0(down2,collapse = ','))
+)
+
+writetxt(tmp,'./out/20240709_aging/Figure5_differ_type/input_pro_differtypes_metascape_loose.txt',col.names = F)
+c(length(up1), length(up2),length(down1),length(down2))
+
+                 
+
+
+
+length(commonMols.filter$FDR005$macaca_uppro_meta_typeII)
+length(commonMols.filter$FDR005$macaca_uppro_meta_typeI)
+
+length(commonMols.filter$FDR005$macaca_downpro_meta_typeII)
+length(commonMols.filter$FDR005$macaca_downpro_meta_typeI)
+
+
+length(commonMols.filter$FDR005$macaca_upmrna_meta_typeII)
+length(commonMols.filter$FDR005$macaca_upmrna_meta_typeI)
+
+length(commonMols.filter$FDR005$macaca_downmrna_meta_typeII)
+length(commonMols.filter$FDR005$macaca_downmrna_meta_typeI)
+
+
+length(commonMols.filter$FDR005$macaca_upmet_meta_typeII)
+length(commonMols.filter$FDR005$macaca_upmet_meta_typeI)
+
+length(commonMols.filter$FDR005$macaca_downmet_meta_typeII)
+length(commonMols.filter$FDR005$macaca_downmet_meta_typeI)
+```
+## 9.2 Figure S14
+
+```{r}
+volcono_plot_subtype <- function(Metapro.typeI,title){
+  tmpxx = Metapro.typeI[, substr(colnames(Metapro.typeI),1,7) == 'log2FC_']
+  colnames(tmpxx) = gsub('log2FC_','',colnames(tmpxx))
+  tmpmanyNA = rowSums(is.na(tmpxx)) >= ncol(tmpxx)/3
+  tmpdata = data.frame(ID = rownames(Metapro.typeI),
+                     log2FC = Metapro.typeI$Metalog2FC,
+                     Pvalue = Metapro.typeI$MetaFDR,
+                     manyNA = tmpmanyNA)
+  tmpdata = tmpdata[!tmpdata$manyNA,]
+  #tmpdata$Pvalue[tmpdata$Pvalue < 1e-30] = 1e-30
+  p = plot_DEflux(tmpdata,alpha = 0.5,num.showlab = 8,FCcutoff = 0.2,xlab = bquote("log2FC(mean 13 tissues)"),
+            ylab = bquote(~-Log[10] ~ italic('FDR(meta analysis)')),
+            title = title)
+  return(p)
+}
+pdf('./out/20240709_aging/Figure5_differ_type/Figure_S14A_mRNA_typeI.pdf')
+  p = volcono_plot_subtype(Metamrna.typeI,'Aging related mRNA in Type I tissues')
+  print(p)
+dev.off()
+pdf('./out/20240709_aging/Figure5_differ_type/Figure_S14B_mRNA_typeII.pdf')
+  p = volcono_plot_subtype(Metamrna.typeII,'Aging related mRNA in Type II tissues')
+  print(p)
+dev.off()
+
+pdf('./out/20240709_aging/Figure5_differ_type/Figure_S14C_pro_typeI.pdf')
+  p = volcono_plot_subtype(Metapro.typeI,'Aging related protein in Type I tissues')
+  print(p)
+dev.off()
+pdf('./out/20240709_aging/Figure5_differ_type/Figure_S14D_pro_typeII.pdf')
+  p = volcono_plot_subtype(Metapro.typeII,'Aging related protein in Type II tissues')
+  print(p)
+dev.off()
+
+pdf('./out/20240709_aging/Figure5_differ_type/Figure_S14E_met_typeI.pdf')
+  p = volcono_plot_subtype(Metamet.typeI,'Aging related protein in Type I tissues')
+  print(p)
+dev.off()
+pdf('./out/20240709_aging/Figure5_differ_type/Figure_S14F_met_typeII.pdf')
+  p = volcono_plot_subtype(Metamet.typeII,'Aging related protein in Type II tissues')
+  print(p)
+dev.off()
+
+
+
+```
+
+## 9.3 Figure S15A
+
+```{r}
+profc.all = Metapro[, substr(colnames(Metapro),1,7) == 'log2FC_']
+colnames(profc.all) =gsub('log2FC_','',colnames(profc.all))
+profc.all = profc.all[,tissueClass$tissue]
+DEpro_profcall = DEGenes.simplified(profc.all,catagory = tissueClass$type == 'Type_I',
+                                    subset = tissueClass$type != 'Undefined')
+DEpro_profcall$log2FC[is.na(DEpro_profcall$log2FC)] = 0
+DEpro_profcall$Pvalue[is.na(DEpro_profcall$Pvalue)] = 1
+DEpro_profcall$manyNA = rowSums(is.na(profc.all)) >= ncol(profc.all)/3
+
+pdf('./out/20240709_aging/Figure5_differ_type/Figure_S15A_vocano_DEpro_profcall_typeI_vs_typeII.pdf')
+plot_DEflux(DEpro_profcall[DEpro_profcall$manyNA == FALSE,],FCcutoff = 0.2,xlab = "log2 fold changed difference",num.showlab = 5,alpha = 0.5,labSize = 6,#fixpointsize = 3,
+            ylab = bquote(~-Log[10] ~ italic(P)))+ggtitle('log2 fold change difference typeI vs type II')
+dev.off()
+writetxt(DEpro_profcall,filename = './out/20240709_aging/Figure5_differ_type/DEpro_profcall_typeI_vs_typeII.txt')
+
+sum(DEpro_profcall$Pvalue < 0.05 & DEpro_profcall$log2FC < -0.2)
+sum(DEpro_profcall$Pvalue < 0.05 & DEpro_profcall$log2FC > 0.2)
+```
+
+## 9.4 Figure S15B
+
+```{r}
+metfc.all = Metamet[, substr(colnames(Metapro),1,7) == 'log2FC_']
+colnames(metfc.all) =gsub('log2FC_','',colnames(metfc.all))
+metfc.all = metfc.all[,tissueClass$tissue]
+DEmet_metfcall = DEGenes.simplified(metfc.all,catagory = tissueClass$type == 'Type_I',
+                                    subset = tissueClass$type != 'Undefined')
+DEmet_metfcall$log2FC[is.na(DEmet_metfcall$log2FC)] = 0
+DEmet_metfcall$Pvalue[is.na(DEmet_metfcall$Pvalue)] = 1
+DEmet_metfcall$manyNA = rowSums(is.na(DEmet_metfcall)) >= ncol(DEmet_metfcall)/3
+
+pdf('./out/20240709_aging/Figure5_differ_type/Figure_S15B_vocano_DEmet_metofcall_typeI_vs_typeII.pdf')
+plot_DEflux(DEmet_metfcall[DEmet_metfcall$manyNA == FALSE,],FCcutoff = 0.2,xlab = "log2 fold changed difference",num.showlab = 5,alpha = 0.5,labSize = 6,#fixpointsize = 3,
+            ylab = bquote(~-Log[10] ~ italic(P)))+ggtitle('log2 fold change difference typeI vs type II')
+dev.off()
+writetxt(DEpro_profcall,filename = './out/20240709_aging/Figure5_differ_type/DEmet_metofcall_typeI_vs_typeII.txt')
+
+sum(DEmet_metfcall$Pvalue < 0.05 & DEpro_profcall$log2FC < -0.2)
+sum(DEmet_metfcall$Pvalue < 0.05 & DEpro_profcall$log2FC > 0.2)
+DEmet_metfcall['Hypoxanthine',]
+```
+
+## 9.5 Figure SXA
+
+```{r}
+tmp = Aging_pro_updown.v[tissueClass$tissue,]
+tmp = cbind(tmp,tissueClass)
+
+#pdf('./out/20230217_aging/Figure5_markers_HE/Figure_S5_allchanged_proteins.pdf')
+ggplot(tmp,aes(x = type,y = signif(num.up,3),color = type,fill = type)) +#geom_violin()+
+     geom_boxplot(outlier.size = -1,alpha = 0.1,size = 0.8)+
+     geom_jitter(size = 5,width = 0.3)+ theme_classic() + 
+     lghplot.addtheme()+ scale_color_manual(values=c('#EE0000','#3B4992','gray10'))+
+     xlab('Tissue Type')+ylab('Number of changed proteins')
+t.test(num.all~type,subset= type != 'Undefined',data = tmp) 
+
+wilcox.test(tmp$num.all~tmp$type,subset= tmp$type != 'Undefined') 
+
+# Figure 5A all changed protein
+tx = colSums(abs(Aging_pro_sigall_matrix),na.rm = T)
+yy1 = tissueClass[names(tx),]
+#pdf('./out/20230217_aging/Figure5_markers_HE/Figure_S5_allchanged_proteins.pdf')
+ggplot(,aes(x = yy1$type,y = tx,color = yy1$type,fill = yy1$type)) +#geom_violin()+
+     geom_boxplot(outlier.size = -1,alpha = 0.1,size = 0.8)+
+     geom_jitter(size = 5,width = 0.3)+ theme_classic() + 
+     lghplot.addtheme()+ scale_color_manual(values=c('#EE0000','#3B4992','gray10'))+
+     xlab('Tissue Type')+ylab('Number of changed proteins')
+#dev.off()
+t.test(tx~yy1$type,subset= yy1$type != 'Undefined')  
+```
+
+
+
+
+## 9.4 Figure 5B
+```{r}
+tpath = './out/20240709_aging/Figure5_differ_type/metascape/differ_typeI_vs_typeII_pro_up/metascape_result.xlsx'
+my_data <- as.data.frame(readxl::read_excel(tpath, sheet = "Enrichment"))
+idx = regexpr('Summary',my_data$GroupID) >0
+my_data = my_data[idx,]
+goup = -my_data$`Log(q-value)`
+names(goup) = my_data$Description
+
+tpath = './out/20240709_aging/Figure5_differ_type/metascape/differ_typeI_vs_typeII_pro_down/metascape_result.xlsx'
+my_data <- as.data.frame(read_excel(tpath, sheet = "Enrichment"))
+idx = regexpr('Summary',my_data$GroupID) >0
+my_data = my_data[idx,]
+godown = -my_data$`Log(q-value)`
+names(godown) = my_data$Description
+
+pdf('./out/20240709_aging/Figure5_differ_type/Figure_5B_Fc_differ_proteins_Enrichment.pdf',width = 11,height = 8)
+p = plot_enrich(goup, godown,n_char = 40)
+print(p)
+dev.off()
+
+
+```
+
+## 9.6 Figure 5E-5F
+```{r}
+# construct data
+tissues = names(promet.tissues.Z)
+clusterdist = matrix(0,length(tissues),8)
+clusteramplitude = matrix(0,length(tissues),8)
+clusteramplitude_xx = matrix(0,length(tissues),8)
+for(i in 1:length(tissues)){
+    mstd =   promet.tissues.Z[[i]] 
+    for(j in 1:8){
+    tgene = names(mfuzz.promet.whole$cluster)[mfuzz.promet.whole$cluster == j]
+    tgene = intersect(tgene,rownames(mstd))
+    bx = t(t(mstd[tgene,]) - mfuzz.promet.whole$centers[j,])
+    clusterdist[i,j] = mean(sqrt(rowSums(bx^2)/(ncol(bx)-1)),na.rm = T)
+    if(length(tgene) < 2){
+      clusteramplitude[i,j] = NA
+      next;
+    }
+    tamp = colMeans(mstd[tgene,],na.rm = T)
+    clusteramplitude[i,j] = abs(tamp[4]-tamp[1])
+    clusteramplitude_xx[i,j] = tamp[4]-tamp[1]
+  }
+}
+rownames(clusteramplitude) = tissues
+rownames(clusteramplitude_xx) = tissues
+rownames(clusterdist) = tissues
+
+
+```
+
+```{r}
+ratio.tissues = list()
+ratio.tissues.info = list()
+pro.tissues.forRatio = list()
+mrna.tissues.forRatio = list()
+tissues = names(pro.tissues)
+overlaptissues = intersect(names(pro.tissues.v),names(mrna.tissues))
+for( i in 1:length(overlaptissues)){
+    this_tissue = overlaptissues[i]
+    thispro = pro.tissues.v[[this_tissue]]
+    thismrna = mrna.tissues[[this_tissue]]
+    vcol = intersect(colnames(thispro),colnames(thismrna))
+    vrow = intersect(rownames(thispro),rownames(thismrna))
+    thispro = thispro[vrow,vcol]
+    thismrna  = thismrna[vrow,vcol]
+    pro.tissues.forRatio[[i]] = thispro
+    mrna.tissues.forRatio[[i]] = thismrna
+    ratio.tissues[[i]] = thispro - thismrna
+    ratio.tissues.info[[i]] = pro.tissues.info[[i]][vcol,]
+}
+names(ratio.tissues) = overlaptissues
+names(pro.tissues.forRatio) = overlaptissues
+names(mrna.tissues.forRatio) = overlaptissues
+names(ratio.tissues.info) = overlaptissues
+```
+
+```{r}
+ratio_amplitude = list()
+pro_amplitude = list()
+mrna_amplitude = list()
+n = length(ratio.tissues)
+ratio_out = data.frame(meanChangeRatio = rep(0,n),stringsAsFactors = F,
+                fc_up_down = rep(0,n),
+                tissues = names(ratio.tissues),
+                meanChangeproZ = rep(0,n),
+                fc_up_down_pro = rep(0,n),
+                meanChangemrnaZ = rep(0,n),
+                fc_up_down_mrna = rep(0,n))
+for (i in 1:length(ratio.tissues)){
+    bx = ratio.tissues[[i]]
+    bx.info = ratio.tissues.info[[i]]
+    id = bx.info$stage < 5
+    bx = bx[,id]
+    bx.info = bx.info[id,]
+    cx = t(aggregate(t(bx), by=list(bx.info$stage), FUN=mean, na.rm = T))
+    cx = as.matrix(standardise_matrix_1(cx))
+    cx = cx[-1,]
+    ee = cx[,4]-cx[,1]
+    ratio_amplitude[[i]] = ee;
+    #hist(ee,30)
+    ratio_out$meanChangeRatio[i] = mean(ee,na.rm = T)
+    ratio_out$fc_up_down[i] = log2(sum(ee > 0,na.rm = T)/sum(ee < -0,na.rm = T))
+    
+    bx = pro.tissues.forRatio[[i]]
+    bx.info = ratio.tissues.info[[i]]
+    id = bx.info$stage < 5
+    bx = bx[,id]
+    bx.info = bx.info[id,]
+    cx = t(aggregate(t(bx), by=list(bx.info$stage), FUN=mean, na.rm = T))
+    cx = as.matrix(standardise_matrix_1(cx))
+    cx = cx[-1,]
+    ee = cx[,4]-cx[,1]
+    pro_amplitude[[i]] = ee
+    #hist(ee,30)
+    ratio_out$meanChangeproZ[i] = mean(ee,na.rm = T)
+    ratio_out$fc_up_down_pro[i] = log2(sum(ee > 0,na.rm = T)/sum(ee < -0,na.rm = T))
+    
+    bx = mrna.tissues.forRatio[[i]]
+    bx.info = ratio.tissues.info[[i]]
+    id = bx.info$stage < 5
+    bx = bx[,id]
+    bx.info = bx.info[id,]
+    cx = t(aggregate(t(bx), by=list(bx.info$stage), FUN=mean, na.rm = T))
+    cx = as.matrix(standardise_matrix_1(cx))
+    cx = cx[-1,]
+    ee = cx[,4]-cx[,1]
+    mrna_amplitude[[i]] = ee
+    #hist(ee,30)
+    ratio_out$meanChangemrnaZ[i] = mean(ee,na.rm = T)
+    ratio_out$fc_up_down_mrna[i] = log2(sum(ee > 0,na.rm = T)/sum(ee < -0,na.rm = T))
+}
+rownames(ratio_out) = names(ratio.tissues)
+names(ratio_amplitude) = names(ratio.tissues)
+names(pro_amplitude) = names(ratio.tissues)
+names(mrna_amplitude) = names(ratio.tissues)
+
+
+```
+
+
+```{r}
+systems.Color = substr(pal_aaas()(10),1,7)
+names(systems.Color) = unique(tissue.systems)
+systems.Color.fortissue = systems.Color[tissue.systems]
+names(systems.Color.fortissue) = names(ratio_amplitude)
+tissueClass$color = tissueClass$type
+tissueClass$color[tissueClass$color == 'Type I'] = '#BB0021'
+tissueClass$color[tissueClass$color == 'Type II'] = '#3B4992'
+tissueClass$color[tissueClass$color == 'Undefine'] = '#B09C85'
+
+
+# hist plot
+p1 = list()
+xplot <- function(ratio_amplitude,xtissue,tissueClass){
+    tcolor = tissueClass[xtissue,]$color
+    tmp =  ggplot(,aes(x = ratio_amplitude[[xtissue]]))+theme_classic()+
+         #geom_histogram(binwidth=0.1,aes(y=..density..), colour="black", fill="white")+
+         geom_vline(xintercept=0, linetype="dashed", color = "blue", size=1)+
+         geom_density(alpha=.6, fill=tcolor) +lghplot.addtheme()+
+      theme(axis.line = element_line(size = 1.2))+ 
+      xlab('')+ylab('')+ggtitle(xtissue)
+    return(tmp)
+}
+
+index = sort.int(ratio_out$meanChangeRatio,decreasing = F,index.return = T)$ix
+vclass = tissueClass[rownames(ratio_out)[index],]
+idx = sort.int(vclass$color,decreasing = F,index.return = T)$ix
+vclass = vclass[idx,]
+for(i in 1:nrow(vclass)){
+    xtissue = vclass$tissue[i]
+    p1[[i]] = xplot(ratio_amplitude,xtissue,tissueClass)
+}
+pdf(file = './out/20240709_aging/Figure4_trajactory/FigureSA_Changed_ratio_distribute_based_on_promet_sortby_v2.pdf',width = 25,height = 12.5)
+grid.arrange(arrangeGrob(grobs = p1,ncol = 8,
+           top=textGrob('Distribution of changed translation efficiency to degradation (cTED) with aging', 
+                                        gp=gpar(fontface="bold",  fontsize=30)),
+            bottom=textGrob('Changed normalized TED', 
+                                        gp=gpar(fontface="bold",  fontsize=30)),
+            left = textGrob('Density', 
+                                        gp=gpar(fontface="bold",  fontsize=30),rot=90)))
+dev.off()
+
+
+```
+```{r}
+
+ratio_updown = zeros(length(ratio_amplitude),2)
+tissues =names(ratio_amplitude)
+rownames(ratio_updown) = tissues
+colnames(ratio_updown) = c('pec_up','pec_down')
+for(i in 1:length(tissues)){
+    tmp = as.vector(ratio_amplitude[[i]])
+    tmpN = sum(!is.na(tmp))
+    ratio_updown[i,1] = sum(tmp > 0,na.rm =T)/tmpN
+    ratio_updown[i,2] = sum(tmp < 0,na.rm =T)/tmpN
+}
+index = sort.int(ratio_out$meanChangeRatio,decreasing = F,index.return = T)$ix
+ratio_updown = ratio_updown[index,]
+
+tmp = melt(ratio_updown,stringsAsFactor =F)
+colnames(tmp) = c('tissues','Direction','perctage')
+tmp$tissues = factor(tmp$tissues,levels = rownames(vclass))
+pdf('./out/20240709_aging/Figure4_trajactory/
+   FigureSB_tissue_trans_effectiveness_amplitude_ratio_V2.pdf',width = 8,height = 7)
+ggplot(data=tmp, aes(x=tissues, y=perctage, fill=Direction))+theme_classic()+
+       geom_col(position = "fill",alpha = 0.8)+
+      ylab('Relative ratio')+ xlab('')+scale_fill_manual(values=c('#BB0021', '#3B4992'))+
+      lghplot.addtheme(legend.position = 'top',hjust = 1,size = 14)+
+      ggtitle('Relative ratio of up- and down- TEDs')+
+      theme(legend.text=element_text(size=20))
+dev.off()
+
+
+```
+```{r}
+mean_aging_amplitude = rowMeans(clusteramplitude_xx[,])
+mean_aging_amplitude = mean_aging_amplitude[rownames(ratio_out)]
+tmpdata = data.frame(ratioChange = ratio_out$meanChangeRatio,stringsAsFactors = F,
+                     ratioFC = ratio_out$fc_up_down,
+                     amplitude = mean_aging_amplitude,
+                    tissues = rownames(ratio_out))
+rownames(tmpdata) = tmpdata$tissues
+tmpdata$tissueclass = tissueClass[rownames(tmpdata),]$type
+tmp1 = tmpdata
+cor.test(tmp1$ratioChange,tmp1$amplitude)
+pdf('./out/20230217_aging/Figure6_ratio_mrna_pro/Figure6D_overall_translation_effective_score_vs_aging_amplitute_promet_V2.pdf',width = 7,height = 5)
+p = ggplot(tmp1,aes(ratioChange,amplitude,color = tissueclass)) + 
+  theme_classic()+
+      geom_point(size = 6,aes(color = tissueclass)) + 
+      lghplot.addtheme()+geom_smooth(color = 4,size = 0.5,method = 'lm')+
+      geom_text_repel(aes(label = tissues),size = 4,box.padding = 0.5)+
+      #scale_color_aaas(alpha = 0.6)+scale_fill_aaas(alpha = 0.6)+
+      scale_color_manual(values=c('#BB0021', '#3B4992','#B09C85'))+
+      theme(axis.line = element_line(size = 1.2))+
+      xlab('Averaged changed translation effective score')+
+      ylab('Aging amplitude')+
+      ggtitle('Correlation between MAA and cTED')
+print(p)
+```
+
+## 9.7 experiment
+### 9.7.1 P16/P21
+
+```{r}
+p16 = file2frame('./data/P16_tissues_v20230419.txt')
+utissue = unique(p16$Tissue)
+tpvalues = data.frame(tissue = utissue,
+                     p_Juvenile_vs_Elderly = rep(1,length(utissue)),
+                     p_Young_vs_Elderly = rep(1,length(utissue)))
+for(i in 1:length(utissue)){
+    tmpdata = p16[p16$Tissue == utissue[i],]
+    tmpdata$Area.Density.log2 = tmpdata$Area.Density*1e3#log2(tmpdata$Area.Density*1e3)
+    tmpdata$class = factor(x = tmpdata$class,levels = c('Juvenile','Young','Elderly'))
+    tmpp1 = t.test(Area.Density~class,data = tmpdata,subset = tmpdata$class != 'Young')$p.value
+    tmpp2 = t.test(Area.Density~class,data = tmpdata,subset = tmpdata$class != 'Juvenile')$p.value
+    tpvalues$p_Juvenile_vs_Elderly[i] = tmpp1
+    tpvalues$p_Young_vs_Elderly[i] = tmpp2
+    
+    df2 = data.frame(tmean = aggregate(tmpdata$Area.Density.log2, by=list(tmpdata$class), FUN=mean, na.rm = T)$x,
+                tsd = aggregate(tmpdata$Area.Density.log2, by=list(tmpdata$class), FUN=sd, na.rm = T)$x,
+                    class = factor(x= c('Juvenile','Young','Elderly'),levels = c('Juvenile','Young','Elderly'))
+                 )
+    thepath = paste0('./out/20240709_aging/Figure5_differ_type/p16/Figure5x_p16_stats', utissue[i],'.pdf')
+    pdf(thepath)
+    p = ggplot(df2, aes(x = class, y = tmean, fill = class)) + geom_bar(stat = 'identity',color = 'black',position = position_dodge(),alpha = 0.5,size = 1.5)+
+      geom_errorbar(aes(ymin = tmean,ymax = tmean+tsd),width = .3,size = 1.5)+lghplot.addtheme(size = 28,sizex = 26,sizey = 26)+
+      scale_fill_manual(values = c('#008B45FF','#3B4992FF','#EE0000FF'))+ 
+      theme(axis.line = element_line(size = 1.2))+ xlab('')+ 
+    ylab(bquote('Area Density ' ~ italic(x10) ^italic(3)))+
+    #ylab('Log10 Area Density x 1e-7')+
+    ggtitle(utissue[i])
+    #if(i <=8){
+    #    p = p+ scale_y_break(c(breaks_A[i],breaks_B[i]), scales = "free",space  = 0.2)
+    #}
+    
+    print(p)
+    dev.off()
+}
+
+tpvalues
+
+```
+```{r}
+# p21
+p21 = file2frame('./data/P21_tissues_v20230419.txt')
+utissue = unique(p21$Tissue)
+tpvalues = data.frame(tissue = utissue,
+                     p_Juvenile_vs_Elderly = rep(1,length(utissue)),
+                     p_Young_vs_Elderly = rep(1,length(utissue)))
+for(i in 1:length(utissue)){
+    tmpdata = p21[p21$Tissue == utissue[i],]
+    tmpdata$Area.Density.log2 = tmpdata$Area.Density*1e3#log2(tmpdata$Area.Density*1e3)
+    tmpdata$class = factor(x = tmpdata$class,levels = c('Juvenile','Young','Elderly'))
+    tmpp1 = t.test(Area.Density~class,data = tmpdata,subset = tmpdata$class != 'Young')$p.value
+    tmpp2 = t.test(Area.Density~class,data = tmpdata,subset = tmpdata$class != 'Juvenile')$p.value
+    tpvalues$p_Juvenile_vs_Elderly[i] = tmpp1
+    tpvalues$p_Young_vs_Elderly[i] = tmpp2
+    
+    df2 = data.frame(tmean = aggregate(tmpdata$Area.Density.log2, by=list(tmpdata$class), FUN=mean, na.rm = T)$x,
+                tsd = aggregate(tmpdata$Area.Density.log2, by=list(tmpdata$class), FUN=sd, na.rm = T)$x,
+                    class = factor(x= c('Juvenile','Young','Elderly'),levels = c('Juvenile','Young','Elderly'))
+                 )
+    thepath = paste0('./out/20240709_aging/Figure5_differ_type/p21/Figure5x_p21_stats', utissue[i],'.pdf')
+    pdf(thepath)
+    p = ggplot(df2, aes(x = class, y = tmean, fill = class)) + geom_bar(stat = 'identity',color = 'black',position = position_dodge(),alpha = 0.5,size = 1.5)+
+      geom_errorbar(aes(ymin = tmean,ymax = tmean+tsd),width = .3,size = 1.5)+lghplot.addtheme(size = 28,sizex = 26,sizey = 26)+
+      scale_fill_manual(values = c('#008B45FF','#3B4992FF','#EE0000FF'))+ 
+      theme(axis.line = element_line(size = 1.2))+ xlab('')+ 
+    ylab(bquote('Area Density ' ~ italic(x10) ^italic(3)))+
+    #ylab('Log10 Area Density x 1e-7')+
+    ggtitle(utissue[i])
+    #if(i <=8){
+    #    p = p+ scale_y_break(c(breaks_A[i],breaks_B[i]), scales = "free",space  = 0.2)
+    #}
+    
+    print(p)
+    dev.off()
+}
+
+tpvalues
+```
+
+
+### 9.7.2 cell counts
+
+```{r}
+# type I
+```
+
+```{r}
+# type II
+
+Cellcounts = file2frame('./data/cell_counts_20240802.txt')
+
+utissue = unique(Cellcounts$Tissue)
+tpvalues = data.frame(tissue = utissue,
+                     p_Juvenile_vs_Elderly = rep(1,length(utissue)),
+                     p_Young_vs_Elderly = rep(1,length(utissue)))
+for(i in 1:length(utissue)){
+    tmpdata = Cellcounts[Cellcounts$Tissue == utissue[i],]
+    tmpdata$class = factor(x = tmpdata$class,levels = c('Juvenile','Young','Elderly'))
+    tmpp1 = t.test(number~class,data = tmpdata,subset = tmpdata$class != 'Young')$p.value
+    tmpp2 = t.test(number~class,data = tmpdata,subset = tmpdata$class != 'Juvenile')$p.value
+    tpvalues$p_Juvenile_vs_Elderly[i] = tmpp1
+    tpvalues$p_Young_vs_Elderly[i] = tmpp2
+    
+    df2 = data.frame(tmean = aggregate(tmpdata$number, by=list(tmpdata$class), FUN=mean, na.rm = T)$x,
+                tsd = aggregate(tmpdata$number, by=list(tmpdata$class), FUN=sd, na.rm = T)$x,
+                    class = factor(x= c('Juvenile','Young','Elderly'),levels = c('Juvenile','Young','Elderly'))
+                 )
+    thepath = paste0('./out/20240709_aging/Figure5_differ_type/cellcounts/Extendfigure_HE_cellcounts_', utissue[i],'.pdf')
+    pdf(thepath)
+    p = ggplot(df2, aes(x = class, y = tmean, fill = class)) + geom_bar(stat = 'identity',color = 'black',position = position_dodge(),alpha = 0.5,size = 1.5)+
+      geom_errorbar(aes(ymin = tmean,ymax = tmean+tsd),width = .3,size = 1.5)+lghplot.addtheme(size = 28,sizex = 26,sizey = 26)+
+      scale_fill_manual(values = c('#008B45FF','#3B4992FF','#EE0000FF'))+ 
+      theme(axis.line = element_line(size = 1.2))+ xlab('')+ ylab('Number of Parenchymal Cells')+ggtitle(utissue[i])
+    print(p)
+    dev.off()
+    
+        thepath1 = paste0('./out/20240709_aging/Figure5_differ_type/cellcounts/Extendfigure_HE_cellcounts_', utissue[i],'.png')
+        png(thepath1)
+        print(p)
+        dev.off()
+        
+    
+    
+}
+
+tpvalues
+
+
+```
+
+
+
+# 10. Figure 6 mouse,macaca,human
+## 10.1 get data
+### 10.1.1 mouse
+
+```{r}
+get_CPM <- function(x,log = TRUE){
+  y <- DGEList(x)
+  y <- calcNormFactors(y,method = "TMM")
+  cpms <- cpm(y, log = log)
+  return(cpms)
+}
+
+msdata = loadRData('./data/Mus_agingNature_reads_list.Rdata')
+sum(sapply(msdata$Mus_agingNature_pdata_list, nrow))
+msdata$cpm = list()
+msdata$cpm.clin = list()
+for(i in 1:length(msdata$Mus_agingNature_reads_list)){
+  counts = msdata$Mus_agingNature_reads_list[[i]]
+  clin = msdata$Mus_agingNature_pdata_list[[i]]
+  rownames(clin) = clin$`Sample name`
+  counts = counts[rowSums(counts < 5) < ncol(counts)*0.2,]
+  rownames(counts) = toupper(rownames(counts))
+  clin = clin[colnames(counts),]
+  cpm = get_CPM(counts)
+  ttype = clin$`characteristics: age`
+  ttype[ttype == "3" | ttype == "6" | ttype == "9" | ttype == "12"] = 'Young_adult'
+  ttype[ttype == "18" | ttype == "21" | ttype == "24" | ttype == "27"] = 'Elderly'
+  clin$type = ttype
+  idx = ttype == 'Young_adult' | ttype == 'Elderly' #& clin$`characteristics: sex` == 'f'
+  cpm = cpm[,idx]
+  clin = clin[idx,]
+  
+  pcamrna = prcomp(t(cpm),cor = F)
+  vid = !is.outliner(pcamrna$x[,1])
+  
+  msdata$cpm[[i]] = cpm[,vid]
+  msdata$cpm.clin[[i]] = as.data.frame(clin[vid,])
+}
+names(msdata$cpm) = names(msdata$Mus_agingNature_reads_list)
+names(msdata$cpm.clin) = names(msdata$Mus_agingNature_reads_list)
+
+MetageneMouse = metaGene(msdata$cpm,msdata$cpm.clin)
+
+writetxt_forGPMM(MetageneMouse,'./out/20240709_aging/Figure6_mouse_macaca_human/metagenemouse_usingCPM.txt')
+
+nold = 0;
+nyoung = 0;
+for(i in 1:length(msdata$cpm.clin)){
+  nold = nold + sum(msdata$cpm.clin[[i]]$type == 'Elderly')
+  nyoung = nyoung + sum(msdata$cpm.clin[[i]]$type == 'Young_adult')
+}
+nold
+nyoung
+
+```
+### 10.1.2 human
+
+```{r}
+#load('/home/ligh/projects/X/projects/Cell_aging/GTEX/')
+
+load('/home/ligh/projects/X/projects/Cell_aging/GTEX/GETX.cpm.RData')
+# filter
+vid = rep(0,length(GTEX.clin))
+for(i in 1:length(GTEX.clin)){
+  if(sum(GTEX.clin[[i]]$type == "Young_adult") > 5 
+     & sum(GTEX.clin[[i]]$type == "Elderly") > 5){
+    vid[i] = 1;
+  }
+}
+GTEX.cpm = GTEX.cpm[vid >0 ]
+GTEX.clin = GTEX.clin[vid >0 ]
+
+dxname = c("Skin_of_back" = "Skin_Not_Sun_Exposed_(Suprapubic)",
+           "Pituitary" = "Pituitary" ,
+           "Frontal_pole" = "Brain_Frontal_Cortex_(BA9)",
+           "Lung" = "Lung",
+           "Liver" = "Liver",
+           "Arteria_cruralis" = "",
+           "Femoral_vein"  = "",
+            "Hippocampus"  = "Brain_Hippocampus" ,
+           "Ileocecum" = "Colon_Sigmoid",
+           "Thyroid_gland" = "Thyroid",
+           "Arteria_carotis" = "Artery_Tibial" ,
+           "Muscle" = "Muscle_Skeletal",
+           "Ovary"   = "Ovary",
+           "Cecum" = "Colon_Transverse",
+           "Superior_temporal_gyrus" ="",
+           "Duodenum" = "Small_Intestine_Terminal_Ileum",
+           "Fallopian_tube"  = "",
+           "Stomach"  = "Stomach" ,
+           "Hypothalamus"  = "Brain_Hypothalamus" ,
+            "Heart"    = "Heart_Left_Ventricle",
+           "Thymus" = "",
+           "Facial_skin"  = "",
+           "Pancreas"  = "Pancreas" ,
+           "Supramarginal_gyrus" = "Brain_Cortex",
+           "Adipose" = "Adipose_Visceral_(Omentum)",
+           "Aortic_arch" = "Artery_Aorta" ,
+           "Uterus"  = "Uterus" 
+           )
+idx1 = intersect(names(GTEX.cpm),dxname)
+dxnameRev_pre = dxname[is.element(dxname,idx1)]
+dxnameRev = names(dxnameRev_pre)
+names(dxnameRev) = as.vector(dxnameRev_pre)
+
+GTEX.cpm.v = GTEX.cpm[idx1]
+GTEX.clin.v = GTEX.clin[idx1]
+sum(sapply(GTEX.clin.v, nrow))
+
+
+
+MetageneGETX = metaGene(GTEX.cpm,GTEX.clin)
+writetxt_forGPMM(MetageneGETX,'./out/20240709_aging/Figure6_mouse_macaca_human/metageneGTEX_usingCPM.txt')
+writetxt_forGPMM(MetageneGETX,'/home/ligh/projects/X/projects/Cell_aging/GTEX/metageneGTEX_usingCPM.txt')
+
+
+names(GTEX.cpm.v) = dxnameRev[names(GTEX.cpm.v)]
+names(GTEX.clin.v) = dxnameRev[names(GTEX.clin.v)]
+
+GTEX.cpm.v.Male = GTEX.cpm.v
+GTEX.clin.v.Male = GTEX.clin.v
+GTEX.cpm.v.Female = GTEX.cpm.v
+GTEX.clin.v.Female = GTEX.clin.v
+for(i in 1:length(GTEX.cpm.v)){
+  idx = GTEX.clin.v[[i]]$SEX == 'Male'
+  GTEX.clin.v.Male[[i]] = GTEX.clin.v[[i]][idx,]
+  GTEX.cpm.v.Male[[i]] = GTEX.cpm.v[[i]][,idx]
+  
+  idx = GTEX.clin.v[[i]]$SEX == 'Female'
+  GTEX.clin.v.Female[[i]] = GTEX.clin.v[[i]][idx,]
+  GTEX.cpm.v.Female[[i]] = GTEX.cpm.v[[i]][,idx]
+}
+
+
+
+MetageneGETX.v = metaGene(GTEX.cpm.v,GTEX.clin.v)
+writetxt_forGPMM(MetageneGETX.v,'./out/20240709_aging/Figure6_mouse_macaca_human/metageneGTEX_usingCPM_v.txt')
+
+
+vid = rep(0,length(GTEX.clin.v.Male))
+for(i in 1:length(GTEX.clin.v.Male)){
+  if(sum(GTEX.clin.v.Male[[i]]$type == "Young_adult") > 5 
+     & sum(GTEX.clin.v.Male[[i]]$type == "Elderly") > 5){
+    vid[i] = 1;
+  }
+}
+GTEX.cpm.v.Male = GTEX.cpm.v.Male[vid >0 ]
+GTEX.clin.v.Male = GTEX.clin.v.Male[vid >0 ]
+
+MetageneGETX.v.Male = metaGene(GTEX.cpm.v.Male,GTEX.clin.v.Male)
+writetxt_forGPMM(MetageneGETX.v.Male,'./out/20240709_aging/Figure6_mouse_macaca_human/metageneGTEX_usingCPM_v_male.txt')
+
+
+vid = rep(0,length(GTEX.clin.v.Female))
+for(i in 1:length(GTEX.clin.v.Female)){
+  if(sum(GTEX.clin.v.Female[[i]]$type == "Young_adult") > 5 
+     & sum(GTEX.clin.v.Female[[i]]$type == "Elderly") > 5){
+    vid[i] = 1;
+  }
+}
+GTEX.cpm.v.Female = GTEX.cpm.v.Female[vid >0 ]
+GTEX.clin.v.Female = GTEX.clin.v.Female[vid >0 ]
+
+MetageneGETX.v.Female = metaGene(GTEX.cpm.v.Female,GTEX.clin.v.Female)
+writetxt_forGPMM(MetageneGETX.v.Female,'./out/20240709_aging/Figure6_mouse_macaca_human/metageneGTEX_usingCPM_v_Female.txt')
+```
+```{r}
+nold = 0;
+nyoung = 0;
+for(i in 1:length(GTEX.clin.v)){
+  nold = nold + sum(GTEX.clin.v[[i]]$type == 'Elderly')
+  nyoung = nyoung + sum(GTEX.clin.v[[i]]$type == 'Young_adult')
+}
+nold
+nyoung
+```
+```{r}
+### Meta type I
+idx = tissueClass[names(GTEX.cpm.v),]$type == "Type_I"
+MetageneGETX.v.typeI = metaGene(GTEX.cpm.v[idx],GTEX.clin.v[idx])
+vids = intersect(rownames(MetageneGETX.v.typeI),rownames(Metamrna))
+
+sum(abs(MetageneGETX.v.typeI[vids,]$Metalog2FC) > 0.2 & 
+      MetageneGETX.v.typeI[vids,]$MetaFDR < 0.05)
+
+idx = tissueClass[names(GTEX.cpm.v),]$type == "Type_II"
+MetageneGETX.v.typeII = metaGene(GTEX.cpm.v[idx],GTEX.clin.v[idx])
+vids = intersect(rownames(MetageneGETX.v.typeII),rownames(Metamrna))
+sum(abs(MetageneGETX.v.typeII[vids,]$Metalog2FC) > 0.2 & 
+      MetageneGETX.v.typeII[vids,]$MetaFDR < 0.05)
+
+sum(abs(Metamrna.typeI$Metalog2FC) > 0.2 & 
+      Metamrna.typeI$MetaFDR < 0.05)
+
+sum(abs(Metamrna.typeII$Metalog2FC) > 0.2 & 
+      Metamrna.typeII$MetaFDR < 0.05)
+
+writetxt_forGPMM(Metamrna.typeI,'./out/20240709_aging/Figure5_differ_type/Metamrna_typeI.txt')
+writetxt_forGPMM(Metamrna.typeII,'./out/20240709_aging/Figure5_differ_type/Metamrna_typeII.txt')
+
+vids = intersect(rownames(MetageneGETX.v.typeI),rownames(Metamrna))
+writetxt_forGPMM(MetageneGETX.v.typeI[vids,],'./out/20240709_aging/Figure6_mouse_macaca_human/MetageneGETX.v.typeI_overlaped.txt')
+
+vids = intersect(rownames(MetageneGETX.v.typeII),rownames(Metamrna))
+writetxt_forGPMM(MetageneGETX.v.typeII[vids,],'./out/20240709_aging/Figure6_mouse_macaca_human/MetageneGETX.v.typeII_overlaped.txt')
+
+
+
+```
+
+
+
+```{r}
+GETXfc.all = MetageneGETX.v[, substr(colnames(MetageneGETX.v),1,7) == 'log2FC_']
+colnames(GETXfc.all) =gsub('log2FC_','',colnames(GETXfc.all))
+GETXfc.all.clin = tissueClass[colnames(GETXfc.all),]
+DEmrna_GETXfc.all = DEGenes.simplified(GETXfc.all,catagory = GETXfc.all.clin$type == 'Type_I',
+                                    subset = GETXfc.all.clin$type != 'Undefined')
+
+
+```
+
+```{r}
+## GTEX typI pca
+tmp = GETXfc.all
+tmp = tmp[rowSums(is.na(tmp)) < 1,]
+tmp[is.na(tmp)] = 0
+x1 = intersect(Metapro$ID[Metapro$manyNA == FALSE],rownames(tmp))
+tmp = tmp[x1,]
+#xxids = intersect(xxids,rownames(tmp))
+#tmp = tmp[xxids,]
+pcamrna = prcomp(t(tmp),cor = F)
+percPCA = 100*summary(pcamrna)$importance
+
+ggplot(,aes(pcamrna$x[,1],pcamrna$x[,2],color = GETXfc.all.clin$type)) + geom_point(size = 4) +
+   theme_bw() + lghplot.addtheme(legend.position = 'right')+ #stat_ellipse(lwd=1,level = 0.75) +
+   xlab(paste("PC1(",as.character(round(percPCA[2,1],1)),'%)',sep = '')) + 
+   ylab(paste("PC2(",as.character(round(percPCA[2,2],1)),'%)',sep = '')) + 
+  ggrepel::geom_label_repel(aes(label = colnames(tmp)))+
+   labs(title = "PC1 vs PC2 mRNA")
+
+```
+```{r}
+#mcc mrna
+tmp = mrnafc.all
+tmp = tmp[,colnames(GETXfc.all)]
+#tmp = tmp[rowSums(is.na(tmp)) < 1,]
+tmp[is.na(tmp)] = 0
+x1 = intersect(Metapro$ID[Metapro$manyNA == FALSE],rownames(tmp))
+tmp = tmp[x1,]
+#xxids = intersect(xxids,rownames(tmp))
+#tmp = tmp[xxids,]
+pcamrna = prcomp(t(tmp),cor = F)
+percPCA = 100*summary(pcamrna)$importance
+
+ggplot(,aes(pcamrna$x[,1],pcamrna$x[,2],color = GETXfc.all.clin$type)) + geom_point(size = 4) +
+   theme_bw() + lghplot.addtheme(legend.position = 'right')+ #stat_ellipse(lwd=1,level = 0.75) +
+   xlab(paste("PC1(",as.character(round(percPCA[2,1],1)),'%)',sep = '')) + 
+   ylab(paste("PC2(",as.character(round(percPCA[2,2],1)),'%)',sep = '')) + 
+  ggrepel::geom_label_repel(aes(label = colnames(tmp)))+
+   labs(title = "PC1 vs PC2 mRNA")
+```
+
+```{r}
+tmp = MetageneMouse[,substr(colnames(MetageneMouse),1,7) == 'log2FC_']
+colnames(tmp) = gsub('log2FC_','',colnames(tmp) )
+tmp = tmp[rowSums(is.na(tmp)) < 1,]
+tmp[is.na(tmp)] = 0
+#xxids = intersect(xxids,rownames(tmp))
+#tmp = tmp[xxids,]
+pcamrna = prcomp(t(tmp),cor = F)
+percPCA = 100*summary(pcamrna)$importance
+
+ggplot(,aes(pcamrna$x[,1],pcamrna$x[,2])) + geom_point() + ggrepel::geom_label_repel(label = colnames(tmp))+
+   theme_bw() + lghplot.addtheme(legend.position = 'right')+ #stat_ellipse(lwd=1,level = 0.75) +
+   xlab(paste("PC1(",as.character(round(percPCA[2,1],1)),'%)',sep = '')) + 
+   ylab(paste("PC2(",as.character(round(percPCA[2,2],1)),'%)',sep = '')) + 
+   labs(title = "PC1 vs PC2 mRNA")
+
+
+```
+
+
+
+```{r}
+
+commonMols.filter$FDR005$mouse_upmrna = 
+  MetageneMouse$ID[MetageneMouse$MetaFDR < 0.05 & MetageneMouse$Metalog2FC > 0.20]
+
+commonMols.filter$FDR005$mouse_downmrna = 
+  MetageneMouse$ID[MetageneMouse$MetaFDR < 0.05 & MetageneMouse$Metalog2FC < -0.20]
+
+commonMols.filter$FDR005$human_upmrna = 
+  MetageneGETX.v$ID[MetageneGETX.v$MetaFDR < 0.05 & MetageneGETX.v$Metalog2FC  > 0.20]
+
+commonMols.filter$FDR005$human_downmrna = 
+  MetageneGETX.v$ID[MetageneGETX.v$MetaFDR < 0.05 & MetageneGETX.v$Metalog2FC  < -0.20]
+
+
+```
+
+
+```{r}
+pdf('./out/20240709_aging/Figure6_mouse_macaca_human/ggvenn_cross_species_up_mrna.pdf',width = 8)
+ggvenn::ggvenn(data = list(mrna.up.human = commonMols.filter$FDR005$human_upmrna,
+                        mrna.up.macaca = commonMols.filter$FDR005$macaca_upmrna_meta,
+                        mrna.up.mouse = commonMols.filter$FDR005$mouse_upmrna),
+               fill_color = c("#E64B35FF", "#3C5488FF", "green"),
+               show_percentage = F,stroke_size = 0.5,stroke_alpha = 0.6,text_size = 9
+               )
+dev.off()
+
+
+pdf('./out/20240709_aging/Figure6_mouse_macaca_human/ggvenn_cross_species_down_mrna.pdf',width = 8)
+ggvenn::ggvenn(data = list(mrna.down.human = commonMols.filter$FDR005$human_downmrna,
+                        mrna.down.macaca = commonMols.filter$FDR005$macaca_downmrna_meta,
+                        mrna.down.mouse = commonMols.filter$FDR005$mouse_downmrna),
+               fill_color = c("#E64B35FF", "#3C5488FF", "green"),
+               show_percentage = F,stroke_size = 0.5,stroke_alpha = 0.6,text_size = 9
+               )
+dev.off()
+
+
+```
+
+
+### 10.2 Figure S21
+
+```{r}
+
+volcono_plot_species <- function(Metapro.typeI,title){
+  tmpxx = Metapro.typeI[, substr(colnames(Metapro.typeI),1,7) == 'log2FC_']
+  colnames(tmpxx) = gsub('log2FC_','',colnames(tmpxx))
+  tmpmanyNA = rowSums(is.na(tmpxx)) >= ncol(tmpxx)/3
+  nstudy = ncol(tmpxx)
+  tmpdata = data.frame(ID = rownames(Metapro.typeI),
+                     log2FC = Metapro.typeI$Metalog2FC,
+                     #log2FC = rowMedians(as.matrix(tmpxx),na.rm = T),
+                     Pvalue = Metapro.typeI$MetaFDR,
+                     manyNA = tmpmanyNA)
+  tmpdata = tmpdata[!tmpdata$manyNA,]
+  tmpdata$Pvalue[tmpdata$Pvalue < 1e-250] = 1e-250
+  xlabel = 
+  p = plot_DEflux(tmpdata,alpha = 0.2,num.showlab = 5,FCcutoff = 0.2,
+                  xlab = paste0("Log2FC(mean ",nstudy," tissues)",collapse = ""),
+                  fixpointsize = 1,labSize = 6,
+            ylab = bquote(~-Log[10] ~ italic('FDR (meta analysis)')),
+            title = title)#+ xlim(c(-1,1))
+  return(p)
+}
+
+xxcomm = intersect(intersect(MetageneMouse$ID, Metamrna$ID),MetageneGETX.v$ID)
+
+pdf('./out/20240709_aging/Figure6_mouse_macaca_human/Figure_S21A_mRNA_mouse.pdf')
+  p = volcono_plot_species(MetageneMouse,'Aging related mRNA in mouse')+ xlim(c(-2,2))
+  print(p)
+dev.off()
+
+pdf('./out/20240709_aging/Figure6_mouse_macaca_human/Figure_S21B_mRNA_macaca.pdf')
+  p = volcono_plot_species(Metamrna,'Aging related mRNA in macaca')+xlim(c(-2,2))
+  print(p)
+dev.off()
+
+pdf('./out/20240709_aging/Figure6_mouse_macaca_human/Figure_S21C_mRNA_human.pdf')
+  p = volcono_plot_species(MetageneGETX.v,'Aging related mRNA in human')+xlim(c(-2,2))
+  print(p)
+dev.off()
+
+intersect(intersect(commonMols.filter$FDR005$mouse_upmrna,commonMols.filter$FDR005$macaca_upmrna_meta), commonMols.filter$FDR005$human_upmrna)
+
+intersect(intersect(commonMols.filter$FDR005$mouse_downmrna,commonMols.filter$FDR005$macaca_downmrna_meta), commonMols.filter$FDR005$human_downmrna)
+
+```
+
+
+### 10.3 Figure S21 F-G
+
+```{r}
+xx = readxl::excel_sheets("./data/mouse_proteome_aging.xlsx")
+mousepro = list()
+for(i in 1:length(xx)){
+  mousepro[[i]] = as.data.frame(readxl::read_excel("./data/mouse_proteome_aging.xlsx",sheet = xx[i]))
+}
+names(mousepro) = xx
+Metapromouse = mousepro$`Cross-tissue effects`
+idx = sort.int(Metapromouse$age_qval,decreasing = F,index.return = T)$ix
+Metapromouse = Metapromouse[idx,]
+Metapromouse$symbol = toupper(Metapromouse$symbol)
+Metapromouse = Metapromouse[!duplicated(Metapromouse$symbol),]
+
+commonMols.filter$FDR005$mouse_uppro_meta = unique(toupper(Metapromouse$symbol[Metapromouse$age_qval < 0.05 & Metapromouse$age_effect > 0]))
+commonMols.filter$FDR005$mouse_downpro_meta = unique(toupper(Metapromouse$symbol[Metapromouse$age_qval < 0.05 & Metapromouse$age_effect < 0]))
+
+
+```
+
+```{r}
+tmp = Metapromouse#mousepro$`Cross-tissue effects`
+tmp$log2FC = tmp$age_effect
+tmp$Pvalue = tmp$age_qval
+tmp$ID = toupper(tmp$symbol)
+idx = sort.int(tmp$age_qval,decreasing = F,index.return = T)$ix
+tmp = tmp[idx,]
+vid = !duplicated(tmp$ID)
+tmp = tmp[vid,]
+
+pdf('./out/20240709_aging/Figure6_mouse_macaca_human/Figure_S21F_pro_mouse.pdf')
+p = plot_DEflux(tmp,num.showlab = 5,title = 'Aging related proteins in mouse',
+                xlab = c('Aging effect (12 tissues)'),
+                  fixpointsize = 3,labSize = 6,
+                ylab = bquote(~-Log[10] ~ italic('FDR')))
+print(p)
+dev.off()
+
+```
+
+```{r}
+
+pdf('./out/20240709_aging/Figure6_mouse_macaca_human/Figure_S21G_ggvenn_pro_mouse_macaca.pdf',width = 8)
+ggvenn::ggvenn(data = list(pro.up.macaca = commonMols.filter$FDR005$macaca_uppro_meta,
+                        pro.down.macaca = commonMols.filter$FDR005$macaca_downpro_meta,
+                        pro.up.mouse = commonMols.filter$FDR005$mouse_uppro_meta,
+                        pro.down.mouse = commonMols.filter$FDR005$mouse_downpro_meta
+                        ),
+               fill_color = c("darkorchid1", "yellow","green","cornflowerblue"),
+               show_percentage = F,stroke_size = 0.5,stroke_alpha = 0.6,text_size = 9
+               )
+dev.off()
+
+intersect(commonMols.filter$FDR005$mouse_uppro_meta,commonMols.filter$FDR005$macaca_uppro_meta)
+
+intersect(commonMols.filter$FDR005$mouse_downpro_meta,commonMols.filter$FDR005$macaca_downpro_meta)
+
+```
+
+
+
+
+
+
+
+
+
+
