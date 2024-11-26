@@ -57,8 +57,8 @@ clin = clin[colnames(fpkm),]
 
 changeSolver('cplex')
 
-#load('/home/ligh/projects/X/rGPMM/data/Recon3v2_GPMMmodel.Rdata')
-#load('/home/ligh/projects/X/rGPMM/data/reduceMod_3v2.Rdata')
+load('/home/ligh/projects/X/rGPMM/data/Recon3v2_GPMMmodel.Rdata')
+load('/home/ligh/projects/X/rGPMM/data/reduceMod_3v2.Rdata')
 
 idx = findRxnIDs(Recon3,'EX_nh4(e)')
 Recon3$ub[idx] = 0
