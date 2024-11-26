@@ -76,7 +76,7 @@ status = one_line_flux_analysis(gpmmresult$flux3,
                                 fluxCase = gpmmresult$flux3.log2[,gpmmresult$clin.v$`subject status:ch1` != 'healthy volunteer (HV)'],
                                 fluxControl = gpmmresult$flux3.log2[,gpmmresult$clin.v$`subject status:ch1` == 'healthy volunteer (HV)'],
                                 flux3.annote = gpmmresult$flux3.annote,
-                                outdir = './results/GSE245661v1/')
+                                outdir = './results/GSE245661/')
 
 
 DEflux = file2frame('./results/GSE245661/DEflux.txt')
