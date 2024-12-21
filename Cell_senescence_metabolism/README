@@ -1,6 +1,5 @@
 This is the code and processed data for reproducing the results of "Unraveling the Metabolic Heterogeneity and Commonality of Cellular Senescence using Systems Modeling"
 
-
 Note:
 Our recently developed metabolic modeling methods including FastMM, GPMM, and vhMM have been optimized and integrated into the single cell precision metabolic modeling R platform rGPMM (https://github.com/GonghuaLi/rGPMM, will be public soon). 
 All the metabolic modeling, flux analysis and visualization, the metabolic pathway analysis, all-against-all knock out analysis, and key gene and metabolite identification were performed in rGPMM platform.
