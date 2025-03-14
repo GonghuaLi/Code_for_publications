@@ -1,7 +1,10 @@
 
 # A multi-omics molecular landscape of 30 tissues in aging female rhesus macaques (Macaca mulatta)
 
-**Author**: Gong-Hua Li  
+**Code author**: Gong-Hua Li  
+**Project authors**:Gong-Hua Li#, Xiang-Qing Zhu#, Fu-Hui Xiao#, Xilong Zhao, Longbao Lv, Fan-Qian Yin, Le Chang, Ming-Xia Ge, Qiang Wang, Jing Zhao, Chuan Tian, Zian Li, Guangping Ruan, Rongqing Pang, Jing Gao, Lihua Ma, Xing-Hua Pan*, Qing-Peng Kong*
+**Porject contact**:Qing-Peng Kong (kongqp@mail.kiz.ac.cn) or Xing-Hua Pan (xinghuapan@aliyun.com)
+**Code & data analysis contact**:Gong-Hua Li (ligonghua@mail.kiz.ac.cn)
 **Last Update**: 2025-03-20  
 
 ---
