@@ -66,10 +66,10 @@ if (!require("MetaDE", quietly = TRUE)) {
 
 ### Generate HTML Report
 ```bash
-Rscript -e "rmarkdown::render('Code_for_Macaca_30tissue_aging.Rmd')"
+Rscript -e "rmarkdown::render('Code_for_Macaca_30tissue_aging.Rmd', output_file='Code_to_Results.html')"
 ```
 
 ### Generate PDF Report
 ```bash
-Rscript -e "rmarkdown::render('Code_for_Macaca_30tissue_aging.Rmd', output_format='pdf_document')"
+Rscript -e "rmarkdown::render('Code_for_Macaca_30tissue_aging.Rmd', output_format='pdf_document', output_file='Code_to_Results.pdf')"
 ```
