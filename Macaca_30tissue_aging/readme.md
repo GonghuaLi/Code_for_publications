@@ -13,7 +13,17 @@
 
 ---
 
-## 1. Install Required Packages
+## 1. Data Availability  
+*(Content to be added)*  
+
+---
+
+## 2. Data Description  
+*(Content to be added)*  
+
+---
+
+## 3. Install Required Packages
 
 ```r
 # R Packages from CRAN
@@ -50,17 +60,6 @@ if (!require("MetaDE", quietly = TRUE)) {
   remotes::install_github("metaOmics/MetaDE")
 }
 ```
-
----
-
-## 2. Data Availability  
-*(Content to be added)*  
-
----
-
-## 3. Data Description  
-*(Content to be added)*  
-
 ---
 
 ## 4. Run the RMarkdown Analysis
