@@ -1,18 +1,22 @@
 
 # A multi-omics molecular landscape of 30 tissues in aging female rhesus macaques (Macaca mulatta)
 
-**Code author**: Gong-Hua Li  
-**Project authors**:Gong-Hua Li#, Xiang-Qing Zhu#, Fu-Hui Xiao#, Xilong Zhao, Longbao Lv, Fan-Qian Yin, Le Chang, Ming-Xia Ge, Qiang Wang, Jing Zhao, Chuan Tian, Zian Li, Guangping Ruan, Rongqing Pang, Jing Gao, Lihua Ma, Xing-Hua Pan*, Qing-Peng Kong*
-**Porject contact**:Qing-Peng Kong (kongqp@mail.kiz.ac.cn) or Xing-Hua Pan (xinghuapan@aliyun.com)
-**Code & data analysis contact**:Gong-Hua Li (ligonghua@mail.kiz.ac.cn)
-**Last Update**: 2025-03-20  
+**Code author**: Gong-Hua Li 
+  
+**Project authors**: Gong-Hua Li#, Xiang-Qing Zhu#, Fu-Hui Xiao#, Xilong Zhao, Longbao Lv, Fan-Qian Yin, Le Chang, Ming-Xia Ge, Qiang Wang, Jing Zhao, Chuan Tian, Zian Li, Guangping Ruan, Rongqing Pang, Jing Gao, Lihua Ma, Xing-Hua Pan*, Qing-Peng Kong*  
+  
+**Project contact**: Qing-Peng Kong (kongqp@mail.kiz.ac.cn) or Xing-Hua Pan (xinghuapan@aliyun.com) 
+  
+**Code & data analysis contact**: Gong-Hua Li (ligonghua@mail.kiz.ac.cn)  
+  
+**Last Update**: 2025-03-20    
 
 ---
 
 ## 1. Install Required Packages
 
-### R Packages from CRAN
 ```r
+# R Packages from CRAN
 packages_cran <- c("ggplot2", "ggbreak", "reshape2", "Hmisc", "pracma", "car", "ggrepel", 
                    "grid", "gridExtra", "rlist", "ggsci", "scales", "data.table", 
                    "RColorBrewer", "readxl", "circlize", "ggvenn")
@@ -22,10 +26,9 @@ for (pkg in packages_cran) {
     install.packages(pkg)
   }
 }
-```
 
-### Bioconductor Packages
-```r
+
+# Bioconductor Packages
 if (!require("BiocManager", quietly = TRUE)) {
   install.packages("BiocManager")
 }
@@ -39,10 +42,9 @@ for (pkg in packages_bioc) {
     BiocManager::install(pkg)
   }
 }
-```
 
-### Install MetaDE (GitHub)
-```r
+
+# Install MetaDE (GitHub)
 if (!require("MetaDE", quietly = TRUE)) {
   install.packages("remotes")
   remotes::install_github("metaOmics/MetaDE")
