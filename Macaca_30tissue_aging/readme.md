@@ -28,7 +28,7 @@
 ```r
 # R Packages from CRAN
 packages_cran <- c("ggplot2", "ggbreak", "reshape2", "Hmisc", "pracma", "car", "ggrepel", 
-                   "grid", "gridExtra", "rlist", "ggsci", "scales", "data.table", 
+                   "grid", "gridExtra", "rlist", "ggsci", "scales", "data.table", "openxlsx",
                    "RColorBrewer", "readxl", "circlize", "ggvenn")
 
 for (pkg in packages_cran) {
