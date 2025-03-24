@@ -14,7 +14,11 @@
 ---
 
 ## 1. Data Availability  
-The omics data are freely and publicly available. Level-2 data, including transcriptome raw counts and log2 peak areas for the proteome and metabolome, are accessible on Figshare (https://doi.org/10.6084/m6089.figshare.26963386).  Level-1 raw data, including FASTQ files for the transcriptome and raw LC-MS/MS data for the proteome and metabolome, have been deposited in the OMIX, China National Center for Bioinformation / Beijing Institute of Genomics, Chinese Academy of Sciences (https://ngdc.cncb.ac.cn/omix: accession no. OMIX001777 for transcriptome, OMIX001778 for proteome, and OMIX001779 for metabolome). 
+The omics data are freely and publicly available. 
+
+Level-2 data, including transcriptome raw counts and log2 peak areas for the proteome and metabolome, are accessible on Figshare (https://doi.org/10.6084/m6089.figshare.26963386).  
+
+Level-1 raw data, including FASTQ files for the transcriptome and raw LC-MS/MS data for the proteome and metabolome, have been deposited in the OMIX, China National Center for Bioinformation / Beijing Institute of Genomics, Chinese Academy of Sciences (https://ngdc.cncb.ac.cn/omix: accession no. OMIX001777 for transcriptome, OMIX001778 for proteome, and OMIX001779 for metabolome). 
 
 ---
 
