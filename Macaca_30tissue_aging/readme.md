@@ -86,9 +86,9 @@ if (!require("MetaDE", quietly = TRUE)) {
 ### Change the rootdir for the file Code_for_Macaca_30tissue_aging.Rmd
 please change the line 27:
 
-**rootdir <- "/home/ligh/pubproject/MCMT/"**   to  your own path, such as **rootdir <- "/your/path/"**
+**rootdir <- "/home/ligh/pubproject/MCMT/"**   to  your own path, such as    **rootdir <- "/your/path/"**
 
-**Note:** in your path, you must have a "data" subdirectory that contains all data that downloaded from figshare ((https://doi.org/10.6084/m6089.figshare.26963386).
+**Note:** in your path, a "data" subdirectory is required for reproduce our results, which contains all data that is available at figshare ((https://doi.org/10.6084/m6089.figshare.26963386).
 
 
 ### Generate HTML Report
