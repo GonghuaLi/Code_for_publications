@@ -23,7 +23,22 @@ Level-1 raw data, including FASTQ files for the transcriptome and raw LC-MS/MS d
 ---
 
 ## 2. Data Description  
-*(Content to be added)*  
+The following table provides an overview description of the datasets used in this project:
+
+| Data_name                                      | Data_type       | Description                                              |
+|------------------------------------------------|-----------------|----------------------------------------------------------|
+| rnaData.Rdata                                  | R transcriptome | Macaque 30 tissue raw counts data                        |
+| met.header.all.hmdb_curated.Rdata              | R metabolome    | Macaque metabolite information data                      |
+| met.tissues_solid_tissues.Rdata                | R metabolome    | Macaque 30 tissue metabolome data (log2 peak area)       |
+| met_whole_from_novo_solid_tissues.Rdata        | R metabolome    | Macaque whole body metabolome data (log2 peak area)      |
+| pro.tissues_solid_tissues.Rdata                | R proteome      | Macaque 30 tissue proteome data (log2 peak area)         |
+| pro.whole.fdr0.01_from_NOVO_remap_solid_tissues.Rdata | R proteome      | Macaque whole body proteome data (log2 peak area)        |
+| Macaca_mulatta.Mmul_10.99.ensemble_symbol_biotype.txt | txt gene_information | Macaque gene information file                     |
+| GETX.cpm_21_Female_tissues.RData               | R transcriptome | Human female 21 tissues log2 TMM-normalized CPM data from GTEX |
+| geneInfo_encodev38.tab                         | txt gene_information | Human gene information file                       |
+| Mus_agingNature_reads_list.Rdata               | R transcriptome | Mouse 17 tissue raw counts data from Schaum et al., Nature, 2020 |
+| mouse_geneInfo_GRCm39v113.txt                  | txt gene_information | Mouse gene information file                       |
+| mouse_proteome_aging.xlsx                      | xlsx proteome   | Mouse aging-related proteins from Keele et al., Cell reports, 2023 |
 
 ---
 
