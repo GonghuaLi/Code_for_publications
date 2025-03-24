@@ -973,7 +973,7 @@ mRNA_batch_RIN_analysis <- function(rnaData, tissuenames, outpath, beta_cutoff =
 
   pdf(paste0(outpath, "/RIN_vs_age.pdf"), width = 5.5, height = 5)
   tmpcor <- cor.test(tmpdata$Age, tmpdata$RIN)
-  ggplot(data = tmpdata, aes(x = Age, y = RIN, color = Age)) + theme_classic() +
+  pp <- ggplot(data = tmpdata, aes(x = Age, y = RIN, color = Age)) + theme_classic() +
     geom_jitter(width = 0.2) +
     ylab("RIN") + xlab("Age") +
     annotate("text", x = 13, y = 9.2,
@@ -982,11 +982,12 @@ mRNA_batch_RIN_analysis <- function(rnaData, tissuenames, outpath, beta_cutoff =
     lghplot.addtheme(legend.position = "right", hjust = 1, size = 18) +
     ggtitle("RIN vs Age")
   # theme(legend.text=element_text(size=18))
+  print(pp)
   dev.off()
 
   pdf(paste0(outpath, "/Counts_vs_age.pdf"), width = 6.5, height = 5)
   tmpcor <- cor.test(tmpdata$Age, tmpdata$Counts)
-  ggplot(data = tmpdata, aes(x = Age, y = Counts, color = Age)) + theme_classic() +
+  pp <- ggplot(data = tmpdata, aes(x = Age, y = Counts, color = Age)) + theme_classic() +
     geom_jitter(width = 0.2) +
     ylab("Total counts") + xlab("Age") +
     annotate("text", x = 13, y = 2.7e7,
@@ -995,6 +996,7 @@ mRNA_batch_RIN_analysis <- function(rnaData, tissuenames, outpath, beta_cutoff =
     lghplot.addtheme(legend.position = "right", hjust = 1, size = 18) +
     ggtitle("Total counts vs Age")
   # theme(legend.text=element_text(size=18))
+  print(pp)
   dev.off()
 
 
@@ -1351,6 +1353,34 @@ short_met_names <- function(Metamet.typeI, outype = "data") {
   sortname[sortname == "4-(3-Hydroxybutyl)phenyl β-D-glucopyranoside"] <- "CHEBI:167790"
   sortname <- gsub("Acetyl-\\β-methylcholine", "Acetyl-beta-methylcholine", sortname)
   sortname[sortname == "3-(methylsulfonyl)-2H-chromen-2-one"] <- "CHEBI:192673"
+  sortname[sortname == "2-[4-(tert-butyl)-2,3-dihydro-1,3-thiazol-2-yliden]-3-oxobutanenitrile"] <- "CAS:307975-76-4"
+  sortname[sortname == "3-phenethyl-2-thioxoimidazolidin-4-one"] <- "CAS:37021-14-0"
+  sortname[sortname == "2-{2-[4-(tert-butyl)phenyl]-4-hydroxy-1,3-thiazol-5-yl}acetic acid"] <- "CHEBI:183477"
+  sortname[sortname == "5-fluoro AB-PINACA N-(4-hydroxypentyl) metabolite"] <- "CAS:2460433-23-0"
+  sortname[sortname == "3-(2,3-dihydro-1H-indol-1-yl)-2-[(2-furylmethyl)sulfonyl]acrylonitrile"] <- "Alpha-methyldeoxybenzoin"
+  sortname[sortname == "N-[(4-hydroxy-3-methoxyphenyl)methyl]-8-methylnonanamide"] <- "CHEMBL419862"
+  sortname[sortname == "2-{[2-(4-methylpiperazino)phenyl]methylene}hydrazine-1-carbothioamide"] <- "CAS:2929-81-9"
+  sortname[sortname == "6-methyl-4-(morpholinomethyl)-2H-chromen-2-one"] <- "CHEBI:190578"
+  sortname[sortname == "3-(2-methylpropyl)-octahydropyrrolo[1,2-a]pyrazine-1,4-dione"] <- "CHEBI:228605"
+  sortname[sortname == "3-(4-Hydroxyphenyl)propionic acid"] <- "Phloretic acid"
+  sortname[sortname == "16α-Hydroxydehydroepiandrosterone"] <- "16alpha-OH-DHEA"
+  sortname[sortname == "11-α-Hydroxy-17-methyltestosterone"] <- "CHEBI:34138"
+  sortname[sortname == "7α-Hydroxytestosterone"] <- "7a-Hydroxytestosterone"
+  sortname[sortname == "2-Methylbutyl beta-D-glucopyranoside"] <- "beta-Methylglucoside"
+  sortname[sortname == "ethyl 4-methyl-2-(1H-pyrrol-1-yl)-1,3-thiazole-5-carboxylate"] <- "CHEBI:190645"
+  sortname[sortname == "3'-Adenosine monophosphate (3'-AMP)"] <- "3'-AMP"
+  sortname[sortname == "N-Acetyl-1-aspartylglutamic acid"] <- "NAAG"
+  sortname[sortname == "α-Hydroxyhippuric acid"] <- "a-Hydroxyhippuric acid"
+  sortname[sortname == "Phosphatidylinositol-1,2-dipalmitoyl"] <- "PI(16:0/16:0)"
+  sortname[sortname == "Cytidine-5'-monophosphate"] <- "CMP"
+  sortname[sortname == "alpha-D-Glucopyranosyl 2-O-(2-methylbutanoyl)-alpha-D-glucopyranoside"] <- "CHEBI:183682"
+  sortname[sortname == "2-(2-chlorophenyl)-1-cyclohexyl-6-oxopiperidine-3-carboxylic acid"] <- "CAS:1212241-27-4"
+  sortname[sortname == "Adenosine 5'-monophosphate"] <- "AMP"
+  sortname[sortname == "XLR11 N-(2-fluoropentyl) isomer"] <- "CHEBI:190582"
+  sortname[sortname == "2-(tert-butyl)-1,3-thiazolane-4-carboxylic acid"] <- "CAS:1012881-39-8"
+  sortname[sortname == "XLR11 N-(2-fluoropentyl) isomer"] <- "CHEBI:190582"
+  sortname[sortname == "2-(acetylamino)-3-(1H-indol-3-yl)propanoic acid"] <- "CAS:2280-01-5"
+  sortname[sortname == "α-Ethylaminopentiophenone"] <- "a-Ethylaminopentiophenone"
   rownames(tmpmet) <- sortname
   if (tolower(outype) == "data") {
     return(tmpmet)
@@ -1599,10 +1629,14 @@ plot_save_DEgenes <- function(DEpro.tissues.lm,
   names.DEproAging <- names(DEpro.tissues.lm$Aging)
   for (i in 1:length(DEpro.tissues.lm$Aging)) {
     res2 <- DEpro.tissues.lm$Aging[[i]]
+    res2 <- short_met_names(res2)
+    res2$ID <- rownames(res2)
 
-    proteinVoconoPlot[[i]] <- plot_DEflux(short_met_names(res2), title = names.DEproAging[i],
+    proteinVoconoPlot[[i]] <- plot_DEflux(res2, title = names.DEproAging[i],
       x = "beta", y = "Pvalue",
-      xlab = "Beta lm (Age)", FCcutoff = cutoff, num.showlab = 3)
+      xlab = expression("Age effect size (" * beta[t] * ")"), 
+      ylab = bquote(~ -log[10] ~ italic(P)),
+      FCcutoff = cutoff, num.showlab = 3)
   }
 
   pdf(file = pdffile, width = 3 * 5 + 1, height = 3 * 6)
@@ -1654,6 +1688,37 @@ ggvenn_two_meta_methods <- function(DEpro.tissues.lm, outfile) {
 
 metaGene <- function(repExpr, repClin,
                      meta.method = "REM", tail = "abs", parametric = TRUE) {
+  set.seed(123) #for comparison with previous
+  
+  #subfunc
+  sub_fillgaps_MinNA_formeta <- function(X,nas,nascutoff = 0.3){
+    out = X
+    min_e = min(out,na.rm =T)
+    #alpha = max(min_e,1)
+    for(i in 1:nrow(out)){
+      id = which(is.na(out[i,]))
+      if(!any(id)){next;}
+      #e = min(out[i,],na.rm = T)
+      if(nas[i] < nascutoff){
+        #e = min(out[i,],na.rm = T)
+        out[i,id] = min_e*(1+runif(n=length(id), min = -0.01, max=0.01))
+      }
+    }
+    return(out)
+  }
+  
+  sub_fillgaps_rowMinNA <- function(X){
+    out = X
+    for(i in 1:nrow(out)){
+      id = which(is.na(out[i,]))
+      if(!any(id)){next;}
+      e = min(out[i,],na.rm = T)
+      out[i,id] = e
+    }
+    out[is.infinite(out)] = NA
+    return(out)
+  }
+  
   # set data
   flux3.log2 <- list()
 
@@ -1688,20 +1753,15 @@ metaGene <- function(repExpr, repClin,
   for (i in 1:length(thenames)) {
     tmp <- as.data.frame(flux3.log2[[i]])
     tmp <- as.matrix(tmp[allrxns, ])
-    tmp1 <- fillgaps_rowMinNA_1(tmp)
-    tmp <- fillgaps_MinNA_formeta_v1(tmp, nas)
+    tmp1 <- sub_fillgaps_rowMinNA(tmp)
+    tmp <- sub_fillgaps_MinNA_formeta(tmp, nas)
     # tmp[is.na(tmp)] = 0
     rownames(tmp) <- allrxns
     rownames(tmp1) <- allrxns
 
     tmpDEflux <- DEGenes.simplified(tmp1, catagory = repClin[[i]]$type == "Elderly",
       subset = repClin[[i]]$type == "Elderly" | repClin[[i]]$type == "Young_adult")
-    # tmp_filled = fillgaps_rowMinNA(tmp)
-    # ss = norm::prelim.norm(tmp)
-    # tmpfilled = norm::imp.norm(ss,'em.norm',tmp)
-    # tmp_filled = fillgaps_rowMinNA(tmp)
     flux3.log2[[i]] <- tmp
-    # flux3.log2[[i]] = tmp1
     flux3.log2FC[, i] <- tmpDEflux$log2FC
     flux3.Pvalue[, i] <- tmpDEflux$Pvalue
     flux3.FDR[, i] <- tmpDEflux$FDR
@@ -1736,9 +1796,9 @@ metaGene <- function(repExpr, repClin,
     response = "label",
     ind.method = ind.method, meta.method = meta.method,
     select.group = select.group, ref.level = ref.level,
-    REM.type = "HS",
+    REM.type = "HS",#seed = 2025520,
     paired = paired, tail = tail, parametric = parametric)
-  #
+
   out <- data.frame(ID = allrxns, stringsAsFactors = F,
     MetaAveExpr = rowMeans(flux3.AveExpr, na.rm = T),
     Metalog2FC = rowMeans(flux3.log2FC, na.rm = T),
@@ -1766,6 +1826,8 @@ metaGene <- function(repExpr, repClin,
   tmpfc <- out[, substr(colnames(out), 1, 7) == "log2FC_"]
   colnames(tmpfc) <- gsub("log2FC_", "", colnames(tmpfc))
   out$manyNA <- rowSums(is.na(tmpfc)) >= ncol(tmpfc) / 3
+  
+  set.seed(2025520)
 
   return(out)
 
@@ -1921,7 +1983,8 @@ compare_limma_metaDE_eachtissue <- function(DEpro.tissues.lm, DEpro.tissues.Meta
 }
 
 
-compare_limma_metaDE <- function(DEpro.tissues.lm, DEpro.tissues.MetaDE, title, outfile, outfile1 = NULL) {
+compare_limma_metaDE <- function(DEpro.tissues.lm, DEpro.tissues.MetaDE, 
+                                 title, outfile, outfile1 = NULL) {
 
   idx <- intersect(DEpro.tissues.lm$MetaLimma[!DEpro.tissues.lm$MetaLimma$manyNA, ]$ID,
     DEpro.tissues.MetaDE$ID)
@@ -1951,7 +2014,7 @@ compare_limma_metaDE <- function(DEpro.tissues.lm, DEpro.tissues.MetaDE, title, 
     ) +
     theme_classic() +
     theme(legend.position = "none") + # xlim(c(-3.3,3.3))+ylim(c(-3.3,3.3))+
-    annotate("text", x = 0, y = 1, label = paste("Rho =", round(rho, 2)), size = 4, color = "black")
+    annotate("text", x = 0, y = 1, label = paste("Rho =", round(rho, 3)), size = 4, color = "black")
   print(p)
 
   # only significant
@@ -1965,14 +2028,15 @@ compare_limma_metaDE <- function(DEpro.tissues.lm, DEpro.tissues.MetaDE, title, 
     geom_density_2d(aes(color = ..level..), size = 0.3, alpha = 0.1) +  # Density contours
     geom_smooth(method = "lm", color = "gray", se = TRUE, alpha = 0.3) +  # Linear regression line
     labs(
-      title = paste0(title,  " (significant only)"),
+      title = paste0("Significant ",title),
       x = "Effect size (beta LM)",
       y = "Mean log2FC across 30 tissues"
     ) +
     theme_classic() +
     theme(legend.position = "none") + # xlim(c(-3.3,3.3))+ylim(c(-3.3,3.3))+
-    annotate("text", x = 0, y = 1, label = paste("Rho =", round(rho, 2)), size = 4, color = "black")
+    annotate("text", x = 0, y = 1, label = paste("Rho =", round(rho, 3)), size = 4, color = "black")
   print(p)
+  
   dev.off()
 
   # setdiff()
@@ -2013,7 +2077,7 @@ compare_limma_metaDE <- function(DEpro.tissues.lm, DEpro.tissues.MetaDE, title, 
         ) +
         theme_classic() +
         theme(legend.position = "none") + # xlim(c(-3.3,3.3))+ylim(c(-3.3,3.3))+
-        annotate("text", x = 0, y = 1, label = paste("Rho =", round(rho, 2)), size = 4, color = "black")
+        annotate("text", x = 0, y = 1, label = paste("Rho =", round(rho, 3)), size = 4, color = "black")
 
     }
 
@@ -2025,6 +2089,83 @@ compare_limma_metaDE <- function(DEpro.tissues.lm, DEpro.tissues.MetaDE, title, 
   # grid.arrange(arrangeGrob(grobs = pt,ncol = 5))
 
   return(tmpdata)
+}
+
+
+compare_limma_metaDE_ggven <- function(DEpro.tissues.lm, DEpro.tissues.MetaDE,
+                                       DEpro.tissues.MetaDE.FEM,
+                                 title, outfile) {
+  tmplm <- DEpro.tissues.lm$MetaLimma
+  tmpxlist  <- list(lm.up = tmplm$ID[tmplm$MetaFDR < 0.05 &
+              tmplm$MetaBeta > 0.008 & !tmplm$manyNA],
+          lm.down = tmplm$ID[tmplm$MetaFDR < 0.05 &
+              tmplm$MetaBeta <  -0.008 & !tmplm$manyNA],
+          REM.up = DEpro.tissues.MetaDE$ID[DEpro.tissues.MetaDE$MetaFDR < 0.05 &
+              DEpro.tissues.MetaDE$Metalog2FC > 0.2],
+          REM.down = DEpro.tissues.MetaDE$ID[DEpro.tissues.MetaDE$MetaFDR < 0.05 &
+              DEpro.tissues.MetaDE$Metalog2FC <  -0.2],
+          
+          FEM.up = DEpro.tissues.MetaDE.FEM$ID[DEpro.tissues.MetaDE.FEM$MetaFDR < 0.05 &
+                                                 DEpro.tissues.MetaDE.FEM$Metalog2FC > 0.2],
+          FEM.down = DEpro.tissues.MetaDE.FEM$ID[DEpro.tissues.MetaDE.FEM$MetaFDR < 0.05 &
+                                                   DEpro.tissues.MetaDE.FEM$Metalog2FC <  -0.2])
+  
+  pdf(outfile,width = 3.5,height = 3.5)
+  
+  p <- ggvenn::ggvenn(data = list(LM.up = tmpxlist$lm.up,
+                                  Meta.FEM.up = tmpxlist$FEM.up,
+                                  Meta.REM.up = tmpxlist$REM.up),
+                      fill_color = c("#E64B35FF", "#3C5488FF", "green"),
+                      show_percentage = F, stroke_size = 0.5,
+                      stroke_alpha = 0.6, text_size = 6)
+  print(paste0("UP: (REM & FEM)/REM = ",
+        length(intersect(tmpxlist$REM.up,tmpxlist$FEM.up))/length(tmpxlist$REM.up)))
+  print(paste0("UP: (REM & LM)/REM = ",
+               length(intersect(tmpxlist$REM.up,tmpxlist$lm.up))/length(tmpxlist$REM.up)))
+  print(paste0("UP: (FEM & LM)/FEM = ",
+               length(intersect(tmpxlist$FEM.up,tmpxlist$lm.up))/length(tmpxlist$FEM.up)))
+  
+  print(p)
+  
+  p <- ggvenn::ggvenn(data = list(LM.down = tmpxlist$lm.down,
+                                  Meta.FEM.down = tmpxlist$FEM.down,
+                                  Meta.REM.down = tmpxlist$REM.down),
+                      fill_color = c("#E64B35FF", "#3C5488FF", "green"),
+                      show_percentage = F, stroke_size = 0.5,
+                      stroke_alpha = 0.6, text_size = 6)
+  
+  print(paste0("Down: (REM & FEM)/REM = ",
+               length(intersect(tmpxlist$REM.down,tmpxlist$FEM.down))/length(tmpxlist$REM.down)))
+  print(paste0("Down: (REM & LM)/REM = ",
+               length(intersect(tmpxlist$REM.down,tmpxlist$lm.down))/length(tmpxlist$REM.down)))
+  print(paste0("Down: (FEM & LM)/FEM = ",
+               length(intersect(tmpxlist$FEM.down,tmpxlist$lm.down))/length(tmpxlist$FEM.down)))
+  
+  print(p)
+  
+  tmpaa <- list(LM = c(tmpxlist$lm.up,tmpxlist$lm.down),
+               Meta.FEM = c(tmpxlist$FEM.up,tmpxlist$FEM.down),
+               Meta.REM = c(tmpxlist$REM.up,tmpxlist$REM.down))
+  p <- ggvenn::ggvenn(data = tmpaa,
+                      fill_color = c("#E64B35FF", "#3C5488FF", "green"),
+                      show_percentage = F, stroke_size = 0.5,
+                      stroke_alpha = 0.6, text_size = 6)
+  
+  print(paste0("ALL: (REM & FEM)/REM = ",
+               length(intersect(tmpaa$Meta.REM,tmpaa$Meta.FEM))/length(tmpaa$Meta.REM)))
+  print(paste0("ALL: (REM & LM)/REM = ",
+               length(intersect(tmpaa$Meta.REM,tmpaa$LM))/length(tmpaa$Meta.REM)))
+  print(paste0("ALL: (FEM & LM)/FEM = ",
+               length(intersect(tmpaa$Meta.FEM,tmpaa$LM))/length(tmpaa$Meta.FEM)))
+  
+  print(p)
+  
+  
+  dev.off()
+  
+  # grid.arrange(arrangeGrob(grobs = pt,ncol = 5))
+  
+  return(p)
 }
 
 get_tissue_specific_aging_markers <- function(Metapro, tissue.systems, tissue.color, outfile,
@@ -2171,6 +2312,53 @@ get_tissue_specific_aging_markers <- function(Metapro, tissue.systems, tissue.co
   out$makers <- tissue_aging_markers.pro
   out$heatmap <- ht
   return(out)
+}
+
+write_tissue_specific_aging_markers <- function(tissue_aging_markers,Metapro,omicstype,excelfile) {
+  #omicstype = c('mrna','pro','mets')
+  tmpaa <- tissue_aging_markers[[omicstype]]
+  markers.up <- tmpaa$up
+  markers.down <- tmpaa$down
+  # up
+  for(i in 1:length(markers.up)){
+    tmpname <- names(markers.up)[i]
+    thismarkers <- markers.up[[tmpname]]
+    tmpcolnames <- c('ID',paste0('beta_',tmpname),paste0('Pvalue_',tmpname))
+    tmpfrm <- Metapro[thismarkers,tmpcolnames]
+    tmpfrm$Direction <- rep('Increase',nrow(tmpfrm))
+    tmpfrm$Tissue <- rep(tmpname,nrow(tmpfrm))
+    colnames(tmpfrm) <- c("ID","Beta",'Pvalue','Direction','Tissue')
+    tmpfrm[,2:3] <- signif(tmpfrm[,2:3],4)
+    if(i == 1){
+      markers.up.matrix <- tmpfrm
+    }else{
+      markers.up.matrix <- rbind(markers.up.matrix,tmpfrm)
+    }
+  }
+  
+  #down
+  for(i in 1:length(markers.down)){
+    tmpname <- names(markers.down)[i]
+    thismarkers <- markers.down[[tmpname]]
+    tmpcolnames <- c('ID',paste0('beta_',tmpname),paste0('Pvalue_',tmpname))
+    tmpfrm <- Metapro[thismarkers,tmpcolnames]
+    tmpfrm$Direction <- rep('Decrease',nrow(tmpfrm))
+    tmpfrm$Tissue <- rep(tmpname,nrow(tmpfrm))
+    colnames(tmpfrm) <- c("ID","Beta",'Pvalue','Direction','Tissue')
+    tmpfrm[,2:3] <- signif(tmpfrm[,2:3],4)
+    if(i == 1){
+      markers.down.matrix <- tmpfrm
+    }else{
+      markers.down.matrix <- rbind(markers.down.matrix,tmpfrm)
+    }
+  }
+  
+  markers.all.matrix <- list()
+  markers.all.matrix[["Up_markers"]] <- markers.up.matrix
+  markers.all.matrix[["Down_markers"]] <- markers.down.matrix
+  openxlsx::write.xlsx(markers.all.matrix, file = excelfile, keepNA = T)
+  
+  return(markers.all.matrix)
 }
 
 get_Metacorrlation_met2pro <- function(met.tissues, pro.tissues.v, Metapro, inputname) {

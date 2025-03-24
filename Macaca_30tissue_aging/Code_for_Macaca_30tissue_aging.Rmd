@@ -31,8 +31,8 @@ setwd(rootdir)
 # mk subdirs
 if (!dir.exists("./results"))
   dir.create("./results")
-tmpdirs <- c("data_overall", "data_statu", "trajactory",
-  "trajactory_mrna", "trajactory_combine",
+tmpdirs <- c("data_overall", "data_statu", 
+  "trajactory", "trajactory_combine",
   "differTypes", "ratio", "lm_metabolites",
   "meta_lm_GO", "compare_ms_mcc_human", "experiments")
 for (x in tmpdirs) {
@@ -72,7 +72,7 @@ library(fgsea)
 library(msigdbr)
 library(enrichplot)
 library(ComplexHeatmap)
-source("./Subfunctions_Macaca_30tissue_aging_v1.R")
+source("./Subfunctions_Macaca_30tissue_aging.R")
 set.seed(2025520)
 ```
 
@@ -148,12 +148,14 @@ load("./data/rnaData.Rdata")
 outpath <- "./results/data_statu/"
 rnaData <- updateRNA(rnaData, headers, tissue.systems, macacageneInfo, outpath)
 
+mrna.tissues.noadj <- rnaData$mrna.tissues.org
 mrna.tissues <- rnaData$mrna.tissues
 mrna.tissues.info <- rnaData$mrna.tissues.info
 mrna.whole <- rnaData$mrna.whole
 mrna.whole.info <- rnaData$mrna.whole.info
 for (i in 1:length(mrna.tissues)) {
   colnames(mrna.tissues[[i]]) <- substr(colnames(mrna.tissues[[i]]), 1, 6)
+  colnames(mrna.tissues.noadj[[i]]) <- substr(colnames(mrna.tissues.noadj[[i]]), 1, 6)
 }
 for (i in 1:length(mrna.tissues.info)) {
   rownames(mrna.tissues.info[[i]]) <- substr(rownames(mrna.tissues.info[[i]]), 1, 6)
@@ -240,6 +242,7 @@ for (i in 1:length(alltissues)) {
 }
 
 mrna.tissues <- mrna.tissues[names(pro.tissues)]
+mrna.tissues.noadj <- mrna.tissues.noadj[names(pro.tissues)]
 mrna.tissues.info <- mrna.tissues.info[names(pro.tissues)]
 
 met.tissues <- met.tissues[names(pro.tissues)]
@@ -316,7 +319,7 @@ mean(num_omics.v$num_mrna)
 mean(num_omics.v$num_protein)
 mean(num_omics.v$num_met)
 
-# for plot in html
+# just for plot visualization
 grid.arrange(arrangeGrob(grobs = pomics, ncol = 1,
   top = textGrob("Identified proteins and metabolites",
     gp = gpar(fontsize = 22, fontface = "bold")),
@@ -352,7 +355,7 @@ pdf(file = "./results/data_overall/Figure1C_tSNE_mrna_using_standardised_with_le
 print(p)
 dev.off()
 
-# just for output html mRNA tsne
+# just for plot visualization
 print(p)
 ```
 
@@ -375,7 +378,7 @@ pdf(file = "./results/data_overall/Figure1D_tSNE_protein_using_standardised.pdf"
 print(p)
 dev.off()
 
-# just for output html protein tsne
+# just for plot visualization
 print(p)
 ```
 
@@ -402,10 +405,13 @@ print(p)
 
 ### 4.1.1 protein
 
-```{r}
+```{r, fig.height = 4, fig.width = 4, out.width="50%", fig.align="center",dpi = 144}
 DEpro.tissues.lm <- get_tissue_DEgenes_lm(pro.tissues.v, pro.tissues.info,
   tissue.systems = tissue.systems)
-DEpro.tissues.MetaDE <- metaGene(pro.tissues.v, pro.tissues.info)
+DEpro.tissues.MetaDE <- metaGene(pro.tissues.v, pro.tissues.info,meta.method = "REM")
+DEpro.tissues.MetaDE.FEM <- metaGene(pro.tissues.v, pro.tissues.info,meta.method = "FEM")
+
+#overlap
 
 plot_save_DEgenes(DEpro.tissues.lm,
   pdffile = "./results/data_overall/Figure_S2_DEpro_each_tissueV1_lm.pdf",
@@ -416,14 +422,24 @@ plot_save_DEgenes(DEpro.tissues.lm,
 DEpro_compare_limma_MetaDE <- compare_limma_metaDE(DEpro.tissues.lm,
   DEpro.tissues.MetaDE, "Protein",
   "./results/data_overall/Figure_SX_compare_limma_metaDE_pro.pdf")
+
+#ggven
+DEpro_compare_limma_MetaDE_ggven <- compare_limma_metaDE_ggven(DEpro.tissues.lm,
+  DEpro.tissues.MetaDE, DEpro.tissues.MetaDE.FEM,"Protein",
+  "./results/data_overall/Figure_SX_compare_limma_metaDE_pro_ggven.pdf")
+
+# just for plot visualization
+plot(DEpro_compare_limma_MetaDE_ggven)
+
 ```
 
 ### 4.1.2 mRNA
 
-```{r}
+```{r, fig.height = 4, fig.width = 4, out.width="50%", fig.align="center",dpi = 144}
 DEmrna.tissues.lm <- get_tissue_DEgenes_lm(mrna.tissues, mrna.tissues.info,
   tissue.systems = tissue.systems)
-DEmrna.tissues.MetaDE  <- metaGene(mrna.tissues, mrna.tissues.info)
+DEmrna.tissues.MetaDE  <- metaGene(mrna.tissues, mrna.tissues.info,meta.method = "REM")
+DEmrna.tissues.MetaDE.FEM <- metaGene(mrna.tissues, mrna.tissues.info,meta.method = "FEM")
 
 ## the following is for manuscript revision compare MetaDE and linear regression model
 DEmrna_compare_limma_MetaDE <- compare_limma_metaDE(DEmrna.tissues.lm,
@@ -433,14 +449,24 @@ plot_save_DEgenes(DEmrna.tissues.lm,
   pdffile = "./results/data_overall/Figure_S1_DEmrna_each_tissueV1_lm.pdf",
   excelfile = "./results/data_overall/reduce_Data_S1_DE_tissue_Aging_mrna_lm.xlsx"
 )
+#ggven
+DEmrna_compare_limma_MetaDE_ggven <- compare_limma_metaDE_ggven(DEmrna.tissues.lm,
+  DEmrna.tissues.MetaDE, DEmrna.tissues.MetaDE.FEM,"mRNA",
+  "./results/data_overall/Figure_SX_compare_limma_metaDE_mrna_ggven.pdf")
+
+# just for plot visualization
+plot(DEmrna_compare_limma_MetaDE_ggven)
+
 ```
 
 ### 4.1.3 metabolites
 
-```{r}
+```{r, fig.height = 4, fig.width = 4, out.width="50%", fig.align="center",dpi = 144}
 DEmet.tissues.lm <- get_tissue_DEgenes_lm(met.tissues, met.tissues.info,
   tissue.systems = tissue.systems)
-DEmet.tissues.MetaDE <- metaGene(met.tissues, met.tissues.info)
+DEmet.tissues.MetaDE <- metaGene(met.tissues, met.tissues.info,meta.method = "REM")
+DEmet.tissues.MetaDE.FEM <- metaGene(met.tissues, met.tissues.info,meta.method = "FEM")
+
 DEmet_compare_limma_MetaDE <- compare_limma_metaDE(DEmet.tissues.lm,
   DEmet.tissues.MetaDE, "Metabolites",
   "./results/data_overall/Figure_SX_compare_limma_metaDE_mets.pdf")
@@ -448,6 +474,14 @@ plot_save_DEgenes(DEmet.tissues.lm,
   pdffile = "./results/data_overall/Figure_S3_DEmet_each_tissueV1_lm.pdf",
   excelfile = "./results/data_overall/reduce_Data_S3_DE_tissue_Aging_met_lm.xlsx"
 )
+#ggven
+DEmet_compare_limma_MetaDE_ggven <- compare_limma_metaDE_ggven(DEmet.tissues.lm,
+  DEmet.tissues.MetaDE, DEmet.tissues.MetaDE.FEM, "Metabolites",
+  "./results/data_overall/Figure_SX_compare_limma_metaDE_mets_ggven.pdf")
+
+# just for plot visualization
+plot(DEmet_compare_limma_MetaDE_ggven)
+
 ```
 
 ## 4.2 plot Figure 1F
@@ -1461,6 +1495,7 @@ writetxt_forGPMM(MetageneMouse,
 
 ```{r}
 load("./data/GETX.cpm_21_Female_tissues.RData")
+mean(sapply(GTEX.cpm.v,nrow))
 
 MetageneGETX <- get_tissue_DEgenes_lm(GTEX.cpm.v, GTEX.clin.v,
   tissue.systems = NULL)$MetaLimma
@@ -1921,6 +1956,8 @@ stroke_alpha = 0.6, text_size = 9)
 pdf("./results/compare_ms_mcc_human/ggvenn_pro_macaca_mouse.pdf", width = 8)
 print(p)
 dev.off()
+intersect(commonMols.filter$FDR005$macaca_uppro_meta,commonMols.filter$FDR005$mouse_uppro_meta)
+intersect(commonMols.filter$FDR005$macaca_downpro_meta,commonMols.filter$FDR005$mouse_downpro_meta)
 
 print(p)
 ```
@@ -1955,6 +1992,11 @@ tmpout <- get_tissue_specific_aging_markers(Metapro,
 
 tissue_aging_markers$pro$down <- tmpout$makers
 
+# write
+tissue_markers.pro <- write_tissue_specific_aging_markers(tissue_aging_markers,
+                                                          Metapro,'pro',
+      "./results/meta_lm_GO/Tissue_specific_aging_markers_protein.xlsx")
+
 # just for plot visualization
 heatmap_grob <- grid.grabExpr(draw(tmpout$heatmap))
 grid.draw(heatmap_grob)
@@ -1987,6 +2029,10 @@ tmpout <- get_tissue_specific_aging_markers(Metamrna,
   direction = "down")
 
 tissue_aging_markers$mrna$down <- tmpout$makers
+
+tissue_markers.mrna <- write_tissue_specific_aging_markers(tissue_aging_markers,
+                                                          Metamrna,'mrna',
+      "./results/meta_lm_GO/Tissue_specific_aging_markers_mRNA.xlsx")
 
 # just for plot visualization
 heatmap_grob <- grid.grabExpr(draw(tmpout$heatmap))
@@ -2022,6 +2068,11 @@ tmpout <- get_tissue_specific_aging_markers(Metamet,
 
 tissue_aging_markers$mets$down <- tmpout$makers
 
+#write
+tissue_markers.mets <- write_tissue_specific_aging_markers(tissue_aging_markers,
+                                                          Metamet,'mets',
+      "./results/meta_lm_GO/Tissue_specific_aging_markers_metabolite.xlsx")
+
 # just for plot visualization
 heatmap_grob <- grid.grabExpr(draw(tmpout$heatmap))
 grid.draw(heatmap_grob)
@@ -2049,6 +2100,7 @@ sum(sapply(tissue_aging_markers$mrna$up, length))
 sum(sapply(tissue_aging_markers$mrna$down, length))
 sum(sapply(tissue_aging_markers$mets$up, length))
 sum(sapply(tissue_aging_markers$mets$down, length))
+
 ```
 
 # 9 Figure 5 trajactory and different types
@@ -2264,7 +2316,10 @@ pp <- ggplot(tmpdata, aes(variability, amplitude)) + geom_point(size = 4) +
   geom_text_repel(aes(label = class), size = 7) +
   theme(axis.line = element_line(size = 1.0)) +
   ggtitle("Figure SX cluster_amplitude_variability")
+print(pp)
 dev.off()
+
+# just for plot visualization
 print(pp)
 ```
 
@@ -2320,7 +2375,7 @@ grid.arrange(arrangeGrob(grobs = px, ncol = 4, margin = c(1, 1, 1, 1),
     rot = 90)))
 dev.off()
 
-# print for htmloutput
+# just for plot visualization
 grid.arrange(arrangeGrob(grobs = px, ncol = 4, margin = c(1, 1, 1, 1),
   top = textGrob("Molecular alteration amplitude of each cluster in 30 tissues",
     gp = gpar(fontface = "bold",  fontsize = 24)),
@@ -2406,9 +2461,9 @@ pp <- ggplot(, aes(tissue_pca$x[, 1], tissue_pca$x[, 2], color = tmpType)) +
     box.padding = 0.5, face = "bold") +
   xlab(paste("PC1(", as.character(round(perc_tissue_pca[2, 1], 1)), "%)", sep = "")) +
   ylab(paste("PC2(", as.character(round(perc_tissue_pca[2, 2], 1)), "%)", sep = "")) +
-  scale_color_manual(values = c("#E64B35FF", "#3C5488FF", "#B09C85")) +
+  scale_color_manual(values = c("#FF6347", "#1E90FF", "#DAB700")) +
   theme(legend.text = element_text(size = 12, face = "bold")) +
-  labs(title = "Molecular promet trajectory PCA")
+  labs(title = "Pro & met trajectory PCA")
 print(pp)
 dev.off()
 
@@ -2752,7 +2807,7 @@ p <- plot_DEflux(DEpro_profcall[!DEpro_profcall$manyNA, ],
   num.showlab = 5, alpha = 0.5, labSize = 6,
   ylab = bquote(~ -Log[10] ~ italic(P))) +
   ggtitle("Age effect difference typeI vs type II")
-p <- p + xlim(c(-range, range)) +
+p <- p + xlim(c(-0.2, 0.2)) +
   theme(plot.title = element_text(size = 20)) + lghplot.addtheme()
 print(p)
 dev.off()
@@ -3332,26 +3387,178 @@ ratio.tissues <- list()
 ratio.tissues.info <- list()
 pro.tissues.forRatio <- list()
 mrna.tissues.forRatio <- list()
+mrna.tissues.forRatio_noadj <- list()
 tissues <- names(pro.tissues)
 overlaptissues <- intersect(names(pro.tissues.v), names(mrna.tissues))
 for (i in 1:length(overlaptissues)) {
   this_tissue <- overlaptissues[i]
   thispro <- pro.tissues.v[[this_tissue]]
   thismrna <- mrna.tissues[[this_tissue]]
+  thismrna.noadj <- mrna.tissues.noadj[[this_tissue]]
   vcol <- intersect(colnames(thispro), colnames(thismrna))
   vrow <- intersect(rownames(thispro), rownames(thismrna))
   thispro <- thispro[vrow, vcol]
   thismrna  <- thismrna[vrow, vcol]
+  thismrna.noadj  <- thismrna.noadj[vrow, vcol]
   pro.tissues.forRatio[[i]] <- thispro
   mrna.tissues.forRatio[[i]] <- thismrna
+  mrna.tissues.forRatio_noadj[[i]] <- thismrna.noadj
   ratio.tissues[[i]] <- thispro - thismrna
   ratio.tissues.info[[i]] <- pro.tissues.info[[i]][vcol, ]
 }
 names(ratio.tissues) <- overlaptissues
 names(pro.tissues.forRatio) <- overlaptissues
 names(mrna.tissues.forRatio) <- overlaptissues
+names(mrna.tissues.forRatio_noadj) <- overlaptissues
 names(ratio.tissues.info) <- overlaptissues
 ```
+
+## 11.2 mRNA_pro relation
+
+### 11.2.1 mrna vs pro
+
+```{r,fig.width=12.5, fig.height=15, out.width="100%", fig.align="center",dpi = 144}
+mRNA.mean <- list()
+mRNA.mean.noadj <- list()
+pro.mean <- list()
+for(i in 1:length(pro.tissues.forRatio)){
+    mRNA.mean[[i]] <- rowMeans(mrna.tissues.forRatio[[i]],na.rm = T)
+    mRNA.mean.noadj[[i]] <- rowMeans(mrna.tissues.forRatio_noadj[[i]],na.rm = T)
+    pro.mean[[i]] <- rowMeans(pro.tissues.forRatio[[i]],na.rm = T)
+}
+names(mRNA.mean) <- names(mrna.tissues.forRatio)
+names(mRNA.mean.noadj) <- names(mrna.tissues.forRatio_noadj)
+names(pro.mean) <- names(pro.tissues.forRatio)
+RNA.v <- list_to_matrix(mRNA.mean,names(mRNA.mean))
+RNA.v.noadj <- list_to_matrix(mRNA.mean.noadj,names(mRNA.mean.noadj))
+pro.v <- list_to_matrix(pro.mean,names(pro.mean))
+
+pp <- list()
+pp1 <- list()
+for(i in 1:ncol(pro.v)){
+    idaa <- !is.na(RNA.v[,i]) & !is.na(pro.v[,i])
+    tcor <- cor.test(RNA.v[idaa,i],pro.v[idaa,i])$estimate
+    tcor1 <- cor.test(RNA.v.noadj[idaa,i],pro.v[idaa,i])$estimate
+    tmpdata <- data.frame(xx = RNA.v[idaa,i],
+                        yy = pro.v[idaa,i],
+                        xx.noajd = RNA.v.noadj[idaa,i])
+    pp[[i]] <- ggplot(tmpdata,aes(x= xx,y = yy))+
+        ggrastr::geom_point_rast(size =1, dpi = 144) +  theme_bw()+
+        theme(plot.margin = margin(0.1,0.1,0.1,0.1,"cm"))+
+        lghplot.addtheme(size = 16,sizex = 16,sizey = 16)+        
+        annotate(geom="text", x=4, y=28, 
+                label = paste('R=',signif(tcor,3)),
+               color="darkblue",size = 8,face = "italic")+
+        xlab('')+ylab('')+ggtitle(colnames(pro.v)[i])
+    
+    pp1[[i]] <- ggplot(tmpdata,aes(x= xx.noajd,y = yy))+
+        ggrastr::geom_point_rast(size =1, dpi = 144) +  theme_bw()+
+        theme(plot.margin = margin(0.1,0.1,0.1,0.1,"cm"))+
+        lghplot.addtheme(size = 16,sizex = 16,sizey = 16)+        
+        annotate(geom="text", x=6, y=25, 
+                label = paste('R=',signif(tcor1,3)),
+               color="darkblue",size = 8,face = "italic")+
+        xlab('')+ylab('')+ggtitle(colnames(pro.v)[i])
+}
+
+# compare batch and RIN adjusted log2 (TMM normalized CPM) with protein
+png(file = "./results/ratio/Figure_SX_mrna_vs_pro.png",
+    width = 1250,height = 1500)
+grid.arrange(arrangeGrob(grobs = pp, ncol = 5,
+   bottom=textGrob('mRNA expression(log2 CPM)', 
+     gp=gpar(fontface="bold",  fontsize=22)),
+   left = textGrob('Protein abundance(log2 Peak Area)', 
+     gp=gpar(fontface="bold",  fontsize=22),rot=90)))
+dev.off()
+
+# compare log2 (TMM normalized CPM) with protein
+png(file = "./results/ratio/Figure_SX_mrna_vs_pro_using_noadjcpm.png",
+   width = 1250,height = 1500)
+grid.arrange(arrangeGrob(grobs = pp1, ncol = 5,
+   bottom=textGrob('mRNA expression(log2 CPM)', 
+     gp=gpar(fontface="bold",  fontsize=22)),
+   left = textGrob('Protein abundance(log2 Peak Area)', 
+     gp=gpar(fontface="bold",  fontsize=22),rot=90)))
+dev.off()
+
+# just for plot visualization
+grid.arrange(arrangeGrob(grobs = pp1, ncol = 5,
+   bottom=textGrob('mRNA expression(log2 CPM)', 
+     gp=gpar(fontface="bold",  fontsize=22)),
+   left = textGrob('Protein abundance(log2 Peak Area)', 
+     gp=gpar(fontface="bold",  fontsize=22),rot=90)))
+
+```
+
+### 11.2.2 predict protein vs measured protein
+
+```{r,fig.width=12.5, fig.height=15, out.width="100%", fig.align="center",dpi = 144}
+ratio <- pro.v - RNA.v
+ratio.noadj <- pro.v - RNA.v.noadj
+ratio <- apply(ratio,1,median,na.rm =T)
+ratio.noadj <- apply(ratio.noadj,1,median,na.rm =T)
+
+pro.prediction <- RNA.v + ratio
+pro.prediction.noadj <- RNA.v.noadj + ratio.noadj
+
+pp <- list()
+pp1 <- list()
+for(i in 1:ncol(pro.v)){
+    idaa <- !is.na(pro.prediction[,i]) & !is.na(pro.v[,i])
+    tcor <- cor.test(pro.prediction[idaa,i],pro.v[idaa,i])$estimate
+    tcor1 <- cor.test(pro.prediction.noadj[idaa,i],pro.v[idaa,i])$estimate
+    tmpdata <- data.frame(xx = pro.prediction[idaa,i],
+                        yy = pro.v[idaa,i],
+                        xx.noadj = pro.prediction.noadj[idaa,i])
+    pp[[i]] <- ggplot(tmpdata,aes(x= xx,y = yy))+
+        ggrastr::geom_point_rast(size =1, dpi = 144) + theme_bw()+
+        theme(plot.margin = margin(0.1,0.1,0.1,0.1,"cm"))+
+        lghplot.addtheme(size = 16,sizex = 16,sizey = 16)+        
+        annotate(geom="text", x=15, y=25, 
+                label = paste('R=',signif(tcor,3)),
+               color="darkblue",size = 8,face = "italic")+
+        xlab('')+ylab('')+ggtitle(colnames(pro.v)[i])
+    pp1[[i]] <- ggplot(tmpdata,aes(x= xx.noadj,y = yy))+
+        ggrastr::geom_point_rast(size =1, dpi = 144) + theme_bw()+
+        theme(plot.margin = margin(0.1,0.1,0.1,0.1,"cm"))+
+        lghplot.addtheme(size = 16,sizex = 16,sizey = 16)+        
+        annotate(geom="text", x=15, y=25, 
+                label = paste('R=',signif(tcor1,3)),
+               color="darkblue",size = 8,face = "italic")+
+        xlab('')+ylab('')+ggtitle(colnames(pro.v)[i])
+}
+
+# predict proteins using batch and RIN adjusted log2 (TMM normalized CPM)
+png(file = "./results/ratio/Figure SX_predPro_vs_pro.png",
+  width = 1250,height = 1500)
+grid.arrange(arrangeGrob(grobs = pp, ncol = 5,
+  bottom=textGrob('Predicted protein abundance(log2 Peak Area)', 
+    gp=gpar(fontface="bold",  fontsize=22)),
+  left = textGrob('Protein abundance(log2 Peak Area)', 
+                  gp=gpar(fontface="bold",  fontsize=22),rot=90)))
+dev.off()
+
+# predict proteins using log2 (TMM normalized CPM)
+png(file = "./results/ratio/Figure SX_predPro_vs_pro_noadjcpm.png",
+  width = 1250,height = 1500)
+grid.arrange(arrangeGrob(grobs = pp1, ncol = 5,
+  bottom=textGrob('Predicted protein abundance(log2 Peak Area)', 
+    gp=gpar(fontface="bold",  fontsize=22)),
+  left = textGrob('Protein abundance(log2 Peak Area)', 
+                  gp=gpar(fontface="bold",  fontsize=22),rot=90)))
+dev.off()
+
+# just for plot visualization
+grid.arrange(arrangeGrob(grobs = pp1, ncol = 5,
+  bottom=textGrob('Predicted protein abundance(log2 Peak Area)', 
+    gp=gpar(fontface="bold",  fontsize=22)),
+  left = textGrob('Protein abundance(log2 Peak Area)', 
+                  gp=gpar(fontface="bold",  fontsize=22),rot=90)))
+
+```
+
+
+## 11.3 DEratio use limma
 
 ```{r}
 DEratio.limma <- get_tissue_DEgenes_lm(ratio.tissues,
@@ -3379,7 +3586,10 @@ xplot.beta <- function(ratio_beta, xtissue, tissueClass) {
   tmp <-  ggplot(, aes(x = ratio_beta[[xtissue]]$beta)) + theme_classic() +
     geom_vline(xintercept = 0, linetype = "dashed", color = "blue", size = 1) +
     geom_density(alpha = .6, fill = tcolor) + lghplot.addtheme() +
-    theme(axis.line = element_line(size = 1.2)) + xlim(c(-0.06, 0.06)) +
+    theme(axis.line = element_line(size = 1.2)) + 
+    scale_x_continuous(breaks = seq(-0.06, 0.06, by = 0.06)) +
+    xlim(c(-0.065, 0.065)) +
+    
     xlab("") + ylab("") + ggtitle(xtissue)
   return(tmp)
 }
@@ -3489,7 +3699,7 @@ dev.off()
 print(p)
 ```
 
-## 11.2 TED pathways in different types
+## 11.4 TED pathways in different types
 
 ```{r}
 bp_gene_sets <- msigdbr(species = "Homo sapiens",
@@ -3585,7 +3795,7 @@ dentx <- pheatmap::pheatmap(rationes[, vids], cluster_rows = F,
 )
 pdf("./results/ratio/Figure S14A_enrichment_GSEA_all_tissue_TEDs.pdf",
   height = 3, width = 10)
-grid::grid.draw(dentx$gtable)
+print(dentx)
 dev.off()
 
 # just for plot visualization
@@ -3674,6 +3884,7 @@ pp <- Heatmap(
   rect_gp = gpar(col = "gray50", lwd = 1),
   column_dend_height = unit(10, "mm"),
 )
+print(pp)
 
 dev.off()
 
